@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-"""/pace: show and change the human-pace switches."""
+"""/pace: show and change the human-pace switches, and log and report ratings."""
 from __future__ import annotations
 
+import json
 import sys
-from datetime import datetime
-from typing import List, Optional
+from datetime import datetime, timezone
+from typing import Dict, List, Optional
 
 import pace_config
 
@@ -34,6 +35,51 @@ def _save(cfg: dict) -> str:
     return f"human-pace: {describe(cfg)}\nApplies from your next prompt."
 
 
+def rate(cfg: dict, rest: List[str], now: datetime) -> str:
+    if not rest or not rest[0].isdigit() or not 1 <= int(rest[0]) <= 5:
+        return USAGE
+    entry = {"ts": now.isoformat(timespec="seconds"), "switches": cfg,
+             "score": int(rest[0]), "note": " ".join(rest[1:])}
+    path = pace_config.log_path()
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with path.open("a", encoding="utf-8") as log:
+            log.write(json.dumps(entry, ensure_ascii=False) + "\n")
+    except OSError as e:
+        return f"Could not write rating log {path}: {e.strerror}"
+    return f"Logged {entry['score']}/5 for: {describe(cfg)}"
+
+
+def report() -> str:
+    path = pace_config.log_path()
+    try:
+        lines = path.read_text(encoding="utf-8").splitlines()
+    except FileNotFoundError:
+        lines = []
+    except OSError as e:
+        return f"Could not read rating log {path}: {e.strerror}"
+    scores: Dict[str, List[int]] = {}
+    settings: Dict[str, dict] = {}
+    for line in lines:
+        try:
+            entry = json.loads(line)
+            switches, score = entry["switches"], entry["score"]
+        except (ValueError, KeyError, TypeError):
+            continue
+        if not isinstance(switches, dict) or not isinstance(score, int) or isinstance(score, bool):
+            continue
+        setting = {key: switches.get(key, default) for key, default in pace_config.DEFAULTS.items()}
+        key = json.dumps(setting, sort_keys=True)
+        scores.setdefault(key, []).append(score)
+        settings[key] = setting
+    if not scores:
+        return "No ratings yet. Use /pace rate <1-5> [note]."
+    rows = sorted(scores.items(), key=lambda item: -sum(item[1]) / len(item[1]))
+    return "\n".join(
+        f"{sum(s) / len(s):.1f} avg · {len(s)} rating{'' if len(s) == 1 else 's'} · {describe(settings[k])}"
+        for k, s in rows)
+
+
 def run(args: List[str], now: Optional[datetime] = None) -> str:
     cfg, error = pace_config.load_config()
     if not args:
@@ -48,6 +94,10 @@ def run(args: List[str], now: Optional[datetime] = None) -> str:
         return _save(cfg)
     if command == "reset" and not rest:
         return _save(pace_config.defaults())
+    if command == "rate":
+        return rate(cfg, rest, now or datetime.now(timezone.utc))
+    if command == "report" and not rest:
+        return report()
     return USAGE
 
 

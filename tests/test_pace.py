@@ -6,6 +6,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from datetime import datetime, timezone
 from unittest import mock
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -91,6 +92,65 @@ class CommandFileTest(unittest.TestCase):
         text = (ROOT / "commands" / "pace.md").read_text(encoding="utf-8")
         self.assertIn('!`python3 "${CLAUDE_PLUGIN_ROOT}/scripts/pace.py" "$ARGUMENTS"`', text)
         self.assertIn("allowed-tools: Bash(python3:*)", text)
+
+
+NOW = datetime(2026, 10, 1, 9, 0, tzinfo=timezone.utc)
+
+
+class RateTest(PaceTestBase):
+    def entries(self):
+        return [json.loads(line) for line in self.log.read_text(encoding="utf-8").splitlines()]
+
+    def test_should_append_entry_with_current_switches_when_rating_valid(self):
+        pace.run(["bionic", "off"])
+        out = pace.run(["rate", "4", "easier", "to", "scan"], now=NOW)
+        self.assertEqual(out, "Logged 4/5 for: bionic off · answerFirst on · chunks on · actionMarkers on · length 200")
+        self.assertEqual(self.entries(), [{"ts": "2026-10-01T09:00:00+00:00",
+                                           "switches": {**pc.DEFAULTS, "bionic": False},
+                                           "score": 4, "note": "easier to scan"}])
+
+    def test_should_keep_apostrophe_when_note_arrives_through_command_file(self):
+        with contextlib.redirect_stdout(io.StringIO()):
+            pace.main(["rate 2 didn't help"])
+        self.assertEqual(self.entries()[0]["note"], "didn't help")
+
+    def test_should_print_usage_and_log_nothing_when_score_invalid(self):
+        for args in (["rate"], ["rate", "0"], ["rate", "6"], ["rate", "x"]):
+            with self.subTest(args=args):
+                self.assertEqual(pace.run(args, now=NOW), pace.USAGE)
+                self.assertFalse(self.log.exists())
+
+    def test_should_not_create_config_when_rating(self):
+        pace.run(["rate", "3"], now=NOW)
+        self.assertFalse(self.config.exists())
+
+    def test_should_report_error_when_log_unwritable(self):
+        self.log.mkdir(parents=True)  # a directory where the file should be
+        self.assertTrue(pace.run(["rate", "3"], now=NOW).startswith("Could not write rating log"))
+
+
+class ReportTest(PaceTestBase):
+    def write_log(self, lines):
+        self.log.parent.mkdir(parents=True, exist_ok=True)
+        self.log.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+    def entry(self, score, **switches):
+        return json.dumps({"ts": "t", "switches": {**pc.DEFAULTS, **switches}, "score": score, "note": ""})
+
+    def test_should_say_no_ratings_when_log_missing(self):
+        self.assertEqual(pace.run(["report"]), "No ratings yet. Use /pace rate <1-5> [note].")
+
+    def test_should_group_by_setting_and_sort_by_mean_when_log_has_entries(self):
+        self.write_log([self.entry(2, bionic=False), self.entry(4), self.entry(5)])
+        self.assertEqual(pace.run(["report"]).splitlines(), [
+            "4.5 avg · 2 ratings · bionic on · answerFirst on · chunks on · actionMarkers on · length 200",
+            "2.0 avg · 1 rating · bionic off · answerFirst on · chunks on · actionMarkers on · length 200",
+        ])
+
+    def test_should_skip_corrupt_lines_when_reporting(self):
+        self.write_log([self.entry(4), '{"ts": "t", "swi', "[]", '{"switches": {}, "score": "5"}', self.entry(2)])
+        self.assertEqual(pace.run(["report"]),
+                         "3.0 avg · 2 ratings · bionic on · answerFirst on · chunks on · actionMarkers on · length 200")
 
 
 if __name__ == "__main__":
