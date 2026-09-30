@@ -1,0 +1,6 @@
+{
+  "name": "human-pace",
+  "version": "0.1.0",
+  "description": "Human-paced replies: bionic reading, answer first, short chunks, action markers and a length cap, each toggleable with /pace.",
+  "author": { "name": "a.palogos" }
+}
