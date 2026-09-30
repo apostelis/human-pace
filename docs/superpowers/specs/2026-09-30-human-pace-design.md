@@ -69,7 +69,7 @@ human-pace/
 ├── rules/                   one short markdown fragment per switch
 │   ├── bionic.md  answer-first.md  chunks.md  action-markers.md  length.md
 ├── commands/pace.md         !`python3 "${CLAUDE_PLUGIN_ROOT}/scripts/pace.py" $ARGUMENTS`
-├── evals/                   compliance harness (§6.2)
+├── compliance/              compliance harness (§6.2); not evals/, which `claude plugin eval` claims
 └── tests/                   unittest suite (§6.1)
 ```
 
@@ -146,9 +146,9 @@ Changes take effect from the next prompt. Invalid input prints usage and changes
 - `pace.py`: each subcommand changes config or log exactly as specified; invalid input changes nothing.
 - The §3 bionic checker, against hand-written examples.
 
-### 6.2 Compliance harness (`evals/`)
+### 6.2 Compliance harness (`compliance/`)
 
-`evals/run.py` sends about 10 fixed prompts (`evals/prompts.txt`) through
+`compliance/run.py` sends about 10 fixed prompts (`compliance/prompts.txt`) through
 `claude -p --plugin-dir <repo>` (verified on 2026-09-30 to load plugin hooks headless). It must not
 set `HUMAN_PACE=0`. It scores each reply per rule:
 
