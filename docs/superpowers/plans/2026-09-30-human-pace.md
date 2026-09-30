@@ -1568,7 +1568,9 @@ Expected: a pass count for each of the 6 rules. Record the table in the commit m
 claude plugin marketplace add ~/IdeaProjects/human-pace
 claude plugin install human-pace@human-pace
 ```
-Expected: both commands succeed. In a new interactive session, `/pace` shows the switches, and a normal prompt gets a bionic reply.
+Expected: both commands succeed. In a new interactive session, `/pace` shows the switches, and a normal prompt gets a bionic reply. Also check that the injected rules text is not printed above each reply. If it is, report that to the user as a finding and don't work around it: rules shown above every reply would defeat the plugin's purpose, and whether to accept or change that is the user's decision.
+
+The hook's `prompt` field is the raw typed text, including a namespace and leading spaces (`/probe:check x`, `  /check y`). This was verified with a probe on 2026-09-30, so `PACE_COMMAND` matches `/pace` and `/human-pace:pace` as written.
 
 - [ ] **Step 8: Commit**
 
