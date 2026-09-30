@@ -3,8 +3,9 @@ from __future__ import annotations
 
 import json
 import os
+import tempfile
 from pathlib import Path
-from typing import Optional, Tuple
+from typing import List, Optional, Tuple
 
 SWITCHES = ("bionic", "answerFirst", "chunks", "actionMarkers")
 DEFAULTS = {"bionic": True, "answerFirst": True, "chunks": True, "actionMarkers": True, "length": 200}
@@ -44,7 +45,15 @@ def load_config(path: Optional[Path] = None) -> Tuple[dict, Optional[str]]:
         return cfg, f"{path} is not valid JSON (line {e.lineno})"
     if not isinstance(data, dict):
         return cfg, f"{path} must contain a JSON object"
+    cfg, invalid = validate(data)
+    if invalid:
+        return cfg, f"{path} has invalid values for: {', '.join(invalid)}"
+    return cfg, None
 
+
+def validate(data: dict) -> Tuple[dict, List[str]]:
+    """Merge known keys over defaults. Return (config, names of keys whose values were rejected)."""
+    cfg = defaults()
     invalid = []
     for key in SWITCHES:
         if key in data:
@@ -57,15 +66,20 @@ def load_config(path: Optional[Path] = None) -> Tuple[dict, Optional[str]]:
             cfg["length"] = data["length"]
         else:
             invalid.append("length")
-    if invalid:
-        return cfg, f"{path} has invalid values for: {', '.join(invalid)}"
-    return cfg, None
+    return cfg, invalid
 
 
 def save_config(cfg: dict, path: Optional[Path] = None) -> None:
-    path = path or config_path()
+    # Write through a symlink (e.g. into a dotfiles repo) instead of replacing it with a file.
+    path = (path or config_path()).resolve()
     path.parent.mkdir(parents=True, exist_ok=True)
     known = {key: cfg[key] for key in DEFAULTS}
-    tmp = path.with_name(path.name + ".tmp")
-    tmp.write_text(json.dumps(known, indent=2) + "\n", encoding="utf-8")
-    os.replace(tmp, path)
+    # A unique temp name, so two sessions saving at once can't trip over each other's file.
+    fd, tmp = tempfile.mkstemp(dir=path.parent, prefix=path.name + ".", suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            f.write(json.dumps(known, indent=2) + "\n")
+        os.replace(tmp, path)
+    except BaseException:
+        Path(tmp).unlink(missing_ok=True)
+        raise

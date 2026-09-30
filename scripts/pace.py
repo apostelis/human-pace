@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 import sys
 from datetime import datetime, timezone
 from typing import Dict, List, Optional
@@ -19,6 +20,7 @@ USAGE = """Usage:
 Notes cannot contain double quotes, backticks or $."""
 
 SWITCH_NAMES = {name.lower(): name for name in pace_config.SWITCHES}
+NUMBER = re.compile(r"[0-9]+")  # ASCII only: "²".isdigit() is True but int("²") raises
 
 
 def describe(cfg: dict) -> str:
@@ -41,8 +43,12 @@ def _ends_with_newline(path) -> bool:
         return log.read(1) == b"\n"
 
 
+def _valid_score(score) -> bool:
+    return isinstance(score, int) and not isinstance(score, bool) and 1 <= score <= 5
+
+
 def rate(cfg: dict, rest: List[str], now: datetime) -> str:
-    if not rest or not rest[0].isdigit() or not 1 <= int(rest[0]) <= 5:
+    if not rest or not NUMBER.fullmatch(rest[0]) or not _valid_score(int(rest[0])):
         return USAGE
     entry = {"ts": now.isoformat(timespec="seconds"), "switches": cfg,
              "score": int(rest[0]), "note": " ".join(rest[1:])}
@@ -75,9 +81,11 @@ def report() -> str:
             switches, score = entry["switches"], entry["score"]
         except (ValueError, KeyError, TypeError):
             continue
-        if not isinstance(switches, dict) or not isinstance(score, int) or isinstance(score, bool):
+        if not isinstance(switches, dict) or not _valid_score(score):
             continue
-        setting = {key: switches.get(key, default) for key, default in pace_config.DEFAULTS.items()}
+        setting, invalid = pace_config.validate(switches)
+        if invalid:
+            continue  # hand-edited into something /pace rate never writes
         key = json.dumps(setting, sort_keys=True)
         scores.setdefault(key, []).append(score)
         settings[key] = setting
@@ -98,7 +106,7 @@ def run(args: List[str], now: Optional[datetime] = None) -> str:
     if command in SWITCH_NAMES and len(rest) == 1 and rest[0].lower() in ("on", "off"):
         cfg[SWITCH_NAMES[command]] = rest[0].lower() == "on"
         return _save(cfg)
-    if command == "length" and len(rest) == 1 and rest[0].isdigit():
+    if command == "length" and len(rest) == 1 and NUMBER.fullmatch(rest[0]):
         cfg["length"] = int(rest[0])
         return _save(cfg)
     if command == "reset" and not rest:

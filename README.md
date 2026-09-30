@@ -29,7 +29,8 @@ Requires `python3` (3.9+). Without it the plugin does nothing, and your prompts 
 Changes apply from your next prompt; the updated rules are sent once. Settings live in `~/.claude/human-pace.json`, and ratings in
 `~/.claude/human-pace-log.jsonl`.
 
-Set `HUMAN_PACE=0` to turn the plugin off for scripts and CI that call `claude -p`.
+Headless runs (`claude -p`, the Agent SDK) are skipped, so scripts and CI get plain output.
+Set `HUMAN_PACE=1` to force the rules on there, or `HUMAN_PACE=0` to turn them off everywhere.
 
 ## Develop
 

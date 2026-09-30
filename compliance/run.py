@@ -30,13 +30,19 @@ def ask(prompt: str, env: Dict[str, str], cwd: str) -> str:
     return result.stdout
 
 
+def harness_env(tmp: str) -> Dict[str, str]:
+    env = dict(os.environ)
+    env["HUMAN_PACE"] = "1"                                    # claude -p is headless: force the plugin on
+    env["HUMAN_PACE_CONFIG"] = str(Path(tmp) / "absent.json")  # defaults, not your own switches
+    return env
+
+
 def main() -> int:
     cfg = pace_config.defaults()
     results: Dict[str, List[bool]] = {}
     prompts = load_prompts()
     with tempfile.TemporaryDirectory() as tmp:
-        env = {k: v for k, v in os.environ.items() if k != "HUMAN_PACE"}  # the kill switch must be off
-        env["HUMAN_PACE_CONFIG"] = str(Path(tmp) / "absent.json")         # defaults, not your own switches
+        env = harness_env(tmp)
         for n, prompt in enumerate(prompts, 1):
             print(f"[{n}/{len(prompts)}] {prompt[:70]}", file=sys.stderr)
             scores = score_reply(ask(prompt, env, tmp), cfg)

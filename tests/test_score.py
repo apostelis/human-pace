@@ -79,6 +79,13 @@ class BionicOkTest(unittest.TestCase):
         self.assertTrue(score.bionic_ok("```\ncode\n```"))
 
 
+class HarnessEnvTest(unittest.TestCase):
+    def test_should_force_plugin_on_with_default_config_when_run_headless(self):
+        env = run.harness_env("/scratch")
+        self.assertEqual(env["HUMAN_PACE"], "1")
+        self.assertEqual(env["HUMAN_PACE_CONFIG"], str(Path("/scratch") / "absent.json"))
+
+
 class PromptsTest(unittest.TestCase):
     def test_should_load_ten_prompts_without_comments(self):
         prompts = run.load_prompts()

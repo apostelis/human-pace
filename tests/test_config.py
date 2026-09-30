@@ -102,6 +102,27 @@ class SaveConfigTest(unittest.TestCase):
         pc.save_config(cfg, path)
         self.assertEqual(pc.load_config(path), (cfg, None))
 
+    def test_should_keep_symlink_and_update_target_when_config_is_symlinked(self):
+        target = Path(self.dir.name) / "dotfiles" / "human-pace.json"
+        target.parent.mkdir()
+        target.write_text("{}", encoding="utf-8")
+        link = Path(self.dir.name) / "human-pace.json"
+        link.symlink_to(target)
+        pc.save_config({**pc.defaults(), "bionic": False}, link)
+        self.assertTrue(link.is_symlink())
+        self.assertFalse(json.loads(target.read_text(encoding="utf-8"))["bionic"])
+
+    def test_should_save_when_another_writer_holds_the_old_tmp_name(self):
+        path = Path(self.dir.name) / "human-pace.json"
+        (Path(self.dir.name) / "human-pace.json.tmp").mkdir()
+        pc.save_config(pc.defaults(), path)
+        self.assertEqual(pc.load_config(path), (pc.DEFAULTS, None))
+
+    def test_should_leave_no_temp_files_when_saved(self):
+        path = Path(self.dir.name) / "human-pace.json"
+        pc.save_config(pc.defaults(), path)
+        self.assertEqual([p.name for p in Path(self.dir.name).iterdir()], ["human-pace.json"])
+
     def test_should_drop_unknown_keys_when_saving(self):
         path = Path(self.dir.name) / "human-pace.json"
         pc.save_config({**pc.defaults(), "extra": 1}, path)

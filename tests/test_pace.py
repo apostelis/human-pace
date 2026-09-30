@@ -120,6 +120,13 @@ class RateTest(PaceTestBase):
                 self.assertEqual(pace.run(args, now=NOW), pace.USAGE)
                 self.assertFalse(self.log.exists())
 
+    def test_should_print_usage_when_number_uses_non_ascii_digits(self):
+        for args in (["length", "²"], ["rate", "²"], ["length", "١٥٠"]):
+            with self.subTest(args=args):
+                self.assertEqual(pace.run(args, now=NOW), pace.USAGE)
+        self.assertFalse(self.log.exists())
+        self.assertFalse(self.config.exists())
+
     def test_should_not_create_config_when_rating(self):
         pace.run(["rate", "3"], now=NOW)
         self.assertFalse(self.config.exists())
@@ -159,6 +166,14 @@ class ReportTest(PaceTestBase):
         self.log.write_bytes(self.entry(4).encode() + b'\n{"note": "caf\xc3\n' + self.entry(2).encode() + b"\n")
         self.assertEqual(pace.run(["report"]),
                          "3.0 avg · 2 ratings · bionic on · answerFirst on · chunks on · actionMarkers on · length 200")
+
+    def test_should_skip_hand_edited_entries_when_values_invalid(self):
+        bad_score = json.dumps({"ts": "t", "switches": pc.DEFAULTS, "score": 99, "note": ""})
+        bad_switch = json.dumps({"ts": "t", "switches": {**pc.DEFAULTS, "bionic": "no"}, "score": 1, "note": ""})
+        bad_length = json.dumps({"ts": "t", "switches": {**pc.DEFAULTS, "length": "long"}, "score": 1, "note": ""})
+        self.write_log([self.entry(4), bad_score, bad_switch, bad_length])
+        self.assertEqual(pace.run(["report"]),
+                         "4.0 avg · 1 rating · bionic on · answerFirst on · chunks on · actionMarkers on · length 200")
 
     def test_should_skip_corrupt_lines_when_reporting(self):
         self.write_log([self.entry(4), '{"ts": "t", "swi', "[]", '{"switches": {}, "score": "5"}', self.entry(2)])

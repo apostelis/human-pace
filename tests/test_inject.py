@@ -58,6 +58,18 @@ class ShouldSkipTest(unittest.TestCase):
     def test_should_skip_when_kill_switch_set(self):
         self.assertTrue(inject.should_skip({"prompt": "hi"}, {"HUMAN_PACE": "0"}))
 
+    def test_should_skip_when_run_headless_through_the_sdk(self):
+        for entrypoint in ("sdk-cli", "sdk-py", "sdk-ts"):
+            with self.subTest(entrypoint=entrypoint):
+                self.assertTrue(inject.should_skip({"prompt": "hi"}, {"CLAUDE_CODE_ENTRYPOINT": entrypoint}))
+
+    def test_should_not_skip_headless_when_forced_on(self):
+        env = {"CLAUDE_CODE_ENTRYPOINT": "sdk-cli", "HUMAN_PACE": "1"}
+        self.assertFalse(inject.should_skip({"prompt": "hi"}, env))
+
+    def test_should_not_skip_when_interactive(self):
+        self.assertFalse(inject.should_skip({"prompt": "hi"}, {"CLAUDE_CODE_ENTRYPOINT": "cli"}))
+
     def test_should_skip_when_prompt_is_pace_command(self):
         for prompt in ("/pace", "/pace bionic off", "  /pace", "/human-pace:pace report"):
             with self.subTest(prompt=prompt):
@@ -192,7 +204,7 @@ class OncePerSessionTest(unittest.TestCase):
 class ScriptTest(unittest.TestCase):
     def run_script(self, extra_env):
         with tempfile.TemporaryDirectory() as tmp:
-            env = {k: v for k, v in os.environ.items() if k != "HUMAN_PACE"}
+            env = {k: v for k, v in os.environ.items() if k not in ("HUMAN_PACE", "CLAUDE_CODE_ENTRYPOINT")}
             env.update({"HUMAN_PACE_CONFIG": str(Path(tmp) / "absent.json"), **extra_env})
             return subprocess.run([sys.executable, str(ROOT / "scripts" / "inject.py")],
                                   input=json.dumps({"prompt": "hi"}), capture_output=True, text=True, env=env)

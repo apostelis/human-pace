@@ -60,6 +60,9 @@ def build_rules(cfg: dict, rules_dir: Path = RULES_DIR, config_error: Optional[s
 def should_skip(hook_input: dict, env: Mapping[str, str]) -> bool:
     if env.get("HUMAN_PACE") == "0":
         return True
+    # claude -p and the Agent SDK set sdk-*; their output feeds scripts, not a reader. HUMAN_PACE=1 forces on.
+    if env.get("CLAUDE_CODE_ENTRYPOINT", "").startswith("sdk") and env.get("HUMAN_PACE") != "1":
+        return True
     prompt = hook_input.get("prompt")
     return isinstance(prompt, str) and PACE_COMMAND.match(prompt) is not None
 

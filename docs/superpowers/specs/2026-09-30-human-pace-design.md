@@ -84,7 +84,10 @@ packages.
 1. `SessionStart` (startup, resume, clear, compact) and `UserPromptSubmit` both run `inject.py`, which
    receives the hook JSON on stdin, including `hook_event_name` and `session_id`.
 2. `inject.py` exits with no output (no rules) when any of:
-   - env var `HUMAN_PACE=0` is set (kill switch for scripts, CI and other automation);
+   - env var `HUMAN_PACE=0` is set (kill switch);
+   - `CLAUDE_CODE_ENTRYPOINT` starts with `sdk` (`claude -p`, Agent SDK) and `HUMAN_PACE` is not `1`:
+     headless output feeds scripts, not a reader (verified 2026-09-30: `claude -p` sets `sdk-cli`,
+     an interactive or background CLI session sets `cli`);
    - the prompt starts with `/pace` (its output stays plain);
    - `python3` is unavailable (the hook command fails open).
 3. Otherwise it loads config (defaults if missing), concatenates the rule fragments for enabled
@@ -157,8 +160,8 @@ Changes take effect from the next prompt. Invalid input prints usage and changes
 ### 6.2 Compliance harness (`compliance/`)
 
 `compliance/run.py` sends about 10 fixed prompts (`compliance/prompts.txt`) through
-`claude -p --plugin-dir <repo>` (verified on 2026-09-30 to load plugin hooks headless). It must not
-set `HUMAN_PACE=0`. It scores each reply per rule:
+`claude -p --plugin-dir <repo>` (verified on 2026-09-30 to load plugin hooks headless). It sets
+`HUMAN_PACE=1`, because headless runs are skipped otherwise. It scores each reply per rule:
 
 - first line is one sentence;
 - no paragraph over 3 sentences;
