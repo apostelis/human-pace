@@ -35,6 +35,12 @@ def _save(cfg: dict) -> str:
     return f"human-pace: {describe(cfg)}\nApplies from your next prompt."
 
 
+def _ends_with_newline(path) -> bool:
+    with path.open("rb") as log:
+        log.seek(-1, 2)
+        return log.read(1) == b"\n"
+
+
 def rate(cfg: dict, rest: List[str], now: datetime) -> str:
     if not rest or not rest[0].isdigit() or not 1 <= int(rest[0]) <= 5:
         return USAGE
@@ -44,7 +50,9 @@ def rate(cfg: dict, rest: List[str], now: datetime) -> str:
     try:
         path.parent.mkdir(parents=True, exist_ok=True)
         with path.open("a", encoding="utf-8") as log:
-            log.write(json.dumps(entry, ensure_ascii=False) + "\n")
+            # A crash mid-write leaves no trailing newline; don't glue this entry onto that fragment.
+            prefix = "\n" if log.tell() and not _ends_with_newline(path) else ""
+            log.write(prefix + json.dumps(entry, ensure_ascii=False) + "\n")
     except OSError as e:
         return f"Could not write rating log {path}: {e.strerror}"
     return f"Logged {entry['score']}/5 for: {describe(cfg)}"
@@ -53,7 +61,8 @@ def rate(cfg: dict, rest: List[str], now: datetime) -> str:
 def report() -> str:
     path = pace_config.log_path()
     try:
-        lines = path.read_text(encoding="utf-8").splitlines()
+        # A crash can cut a line inside a multi-byte character; that line then fails to parse and is skipped.
+        lines = path.read_bytes().decode("utf-8", errors="replace").splitlines()
     except FileNotFoundError:
         lines = []
     except OSError as e:

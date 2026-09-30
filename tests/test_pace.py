@@ -124,6 +124,13 @@ class RateTest(PaceTestBase):
         pace.run(["rate", "3"], now=NOW)
         self.assertFalse(self.config.exists())
 
+    def test_should_start_new_line_when_log_ends_mid_line(self):
+        self.log.parent.mkdir(parents=True)
+        self.log.write_text('{"ts": "t", "swi', encoding="utf-8")  # crash mid-write, no newline
+        pace.run(["rate", "5"], now=NOW)
+        self.assertEqual(pace.run(["report"]),
+                         "5.0 avg · 1 rating · bionic on · answerFirst on · chunks on · actionMarkers on · length 200")
+
     def test_should_report_error_when_log_unwritable(self):
         self.log.mkdir(parents=True)  # a directory where the file should be
         self.assertTrue(pace.run(["rate", "3"], now=NOW).startswith("Could not write rating log"))
@@ -146,6 +153,12 @@ class ReportTest(PaceTestBase):
             "4.5 avg · 2 ratings · bionic on · answerFirst on · chunks on · actionMarkers on · length 200",
             "2.0 avg · 1 rating · bionic off · answerFirst on · chunks on · actionMarkers on · length 200",
         ])
+
+    def test_should_skip_line_cut_inside_multibyte_character_when_reporting(self):
+        self.log.parent.mkdir(parents=True)
+        self.log.write_bytes(self.entry(4).encode() + b'\n{"note": "caf\xc3\n' + self.entry(2).encode() + b"\n")
+        self.assertEqual(pace.run(["report"]),
+                         "3.0 avg · 2 ratings · bionic on · answerFirst on · chunks on · actionMarkers on · length 200")
 
     def test_should_skip_corrupt_lines_when_reporting(self):
         self.write_log([self.entry(4), '{"ts": "t", "swi', "[]", '{"switches": {}, "score": "5"}', self.entry(2)])

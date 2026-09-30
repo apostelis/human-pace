@@ -34,6 +34,8 @@ def load_config(path: Optional[Path] = None) -> Tuple[dict, Optional[str]]:
         raw = path.read_text(encoding="utf-8")
     except FileNotFoundError:
         return cfg, None
+    except UnicodeDecodeError:
+        return cfg, f"{path} is not valid UTF-8"
     except OSError as e:
         return cfg, f"cannot read {path}: {e.strerror}"
     try:

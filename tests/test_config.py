@@ -47,6 +47,12 @@ class LoadConfigTest(unittest.TestCase):
         self.assertEqual(cfg, pc.DEFAULTS)
         self.assertIn("not valid JSON", error)
 
+    def test_should_return_defaults_and_error_when_file_not_utf8(self):
+        self.path.write_bytes(b'{"bionic": "\xe9"}')
+        cfg, error = pc.load_config(self.path)
+        self.assertEqual(cfg, pc.DEFAULTS)
+        self.assertIn("not valid UTF-8", error)
+
     def test_should_return_error_when_top_level_is_not_an_object(self):
         self.write("[1, 2]")
         cfg, error = pc.load_config(self.path)
