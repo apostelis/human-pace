@@ -1,0 +1,12 @@
+# One prompt per line. Knowledge questions only, so claude -p answers without tools.
+# The commit and Slack prompts check that text written for others stays unformatted.
+Explain what a git rebase does.
+Which command shows the process listening on port 8080 on macOS?
+Should I use a list or a set in Python to de-duplicate items, and why?
+Write a commit message for a change that adds retry logic to an HTTP client. Put it in a code block.
+Summarise the trade-offs between REST and gRPC.
+My Maven build fails with "package does not exist" after a merge. What should I check?
+Give me the steps to rename a git branch locally and on the remote.
+What is the difference between a process and a thread?
+Draft a short Slack message telling my team the deploy is delayed until tomorrow. Put it in a code block.
+Explain how HTTP caching headers work.
