@@ -6,9 +6,12 @@ chunks, marked action items and a length cap. Every part can be switched on or o
 ## Install
 
 ```
-/plugin marketplace add <path-or-git-url-of-this-repo>
+/plugin marketplace add apostelis/human-pace
 /plugin install human-pace@human-pace
 ```
+
+The rules are sent once when a session starts (and again after `/compact` or `/resume`), not above
+every reply.
 
 Requires `python3` (3.9+). Without it the plugin does nothing, and your prompts are never blocked.
 
@@ -23,7 +26,7 @@ Requires `python3` (3.9+). Without it the plugin does nothing, and your prompts 
 | `/pace rate <1-5> [note]` | Log how the current setting feels |
 | `/pace report` | Average rating per setting |
 
-Changes apply from your next prompt. Settings live in `~/.claude/human-pace.json`, and ratings in
+Changes apply from your next prompt; the updated rules are sent once. Settings live in `~/.claude/human-pace.json`, and ratings in
 `~/.claude/human-pace-log.jsonl`.
 
 Set `HUMAN_PACE=0` to turn the plugin off for scripts and CI that call `claude -p`.

@@ -1,11 +1,17 @@
 #!/usr/bin/env python3
-"""UserPromptSubmit hook: add the enabled human-pace rules to the model's context."""
+"""SessionStart and UserPromptSubmit hook: add the enabled human-pace rules to the model's context.
+
+The rules are sent once per session (SessionStart also fires after compaction and resume), and again
+on a prompt only when /pace has changed them, so they don't appear above every reply.
+"""
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import re
 import sys
+import time
 from pathlib import Path
 from typing import Mapping, Optional
 
@@ -21,6 +27,10 @@ FRAGMENTS = (
     ("bionic", "bionic.md"),
 )
 PACE_COMMAND = re.compile(r"^\s*/(human-pace:)?pace(\s|$)")
+SESSION_ID = re.compile(r"^[\w-]{1,128}$")  # also keeps the id safe to use as a file name
+STATE_MAX_AGE_SECONDS = 7 * 24 * 3600
+UPDATED_PREFIX = "human-pace rules changed; these replace the earlier ones.\n"
+OFF_NOTICE = "human-pace is now off: ignore its earlier formatting rules."
 
 
 def read_fragment(rules_dir: Path, name: str) -> Optional[str]:
@@ -54,8 +64,55 @@ def should_skip(hook_input: dict, env: Mapping[str, str]) -> bool:
     return isinstance(prompt, str) and PACE_COMMAND.match(prompt) is not None
 
 
-def hook_output(rules: str) -> str:
-    return json.dumps({"hookSpecificOutput": {"hookEventName": "UserPromptSubmit", "additionalContext": rules}})
+def hook_output(text: str, event: str = "UserPromptSubmit") -> str:
+    return json.dumps({"hookSpecificOutput": {"hookEventName": event, "additionalContext": text}})
+
+
+def state_dir() -> Path:
+    return Path(os.environ.get("HUMAN_PACE_STATE", "~/.claude/human-pace-state")).expanduser()
+
+
+def _last_sent(session_id: str) -> Optional[str]:
+    try:
+        return (state_dir() / session_id).read_text(encoding="utf-8")
+    except (OSError, ValueError):
+        return None
+
+
+def _remember(session_id: str, digest: str) -> None:
+    try:
+        state_dir().mkdir(parents=True, exist_ok=True)
+        (state_dir() / session_id).write_text(digest, encoding="utf-8")
+    except OSError:
+        pass  # Without state every prompt re-sends the rules, which is the safe direction.
+
+
+def _prune_state() -> None:
+    cutoff = time.time() - STATE_MAX_AGE_SECONDS
+    try:
+        for entry in state_dir().iterdir():
+            if entry.stat().st_mtime < cutoff:
+                entry.unlink()
+    except OSError:
+        pass
+
+
+def rules_to_send(event: str, rules: str, session_id: object) -> str:
+    """Send the rules at session start, and again on a prompt only when they changed."""
+    if not isinstance(session_id, str) or not SESSION_ID.match(session_id):
+        return rules  # Can't track this session: fall back to every prompt.
+    digest = hashlib.sha256(rules.encode("utf-8")).hexdigest()
+    if event == "SessionStart":
+        _prune_state()
+        _remember(session_id, digest)
+        return rules
+    previous = _last_sent(session_id)
+    if previous == digest:
+        return ""
+    _remember(session_id, digest)
+    if previous is None:
+        return rules  # Plugin installed mid-session, or state lost.
+    return UPDATED_PREFIX + rules if rules else OFF_NOTICE
 
 
 def main(stdin=sys.stdin, stdout=sys.stdout, env: Mapping[str, str] = os.environ) -> int:
@@ -68,10 +125,11 @@ def main(stdin=sys.stdin, stdout=sys.stdout, env: Mapping[str, str] = os.environ
             hook_input = {}
         if should_skip(hook_input, env):
             return 0
+        event = "SessionStart" if hook_input.get("hook_event_name") == "SessionStart" else "UserPromptSubmit"
         cfg, error = pace_config.load_config()
-        rules = build_rules(cfg, config_error=error)
-        if rules:
-            stdout.write(hook_output(rules))
+        text = rules_to_send(event, build_rules(cfg, config_error=error), hook_input.get("session_id"))
+        if text:
+            stdout.write(hook_output(text, event))
     except Exception:
         pass  # Never block the user's prompt.
     return 0

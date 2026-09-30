@@ -11,7 +11,7 @@ as a "meat proxy" for Claude's output — reading and relaying more than they ca
 
 **Success criteria**
 
-- On every prompt, with no action from the user (always on, dependable).
+- In every session, with no action from the user (always on, dependable).
 - Every behaviour can be switched independently, so the user can test what actually helps.
 - Measured, not assumed: model compliance is scored, and the user's own experience is logged.
 - Never leaks formatting into artefacts other people read (commits, PRs, files, Slack/Jira).
@@ -61,7 +61,7 @@ human-pace/
 ├── .claude-plugin/
 │   ├── plugin.json          manifest (name: human-pace)
 │   └── marketplace.json     lets teammates install from this repo
-├── hooks/hooks.json         UserPromptSubmit → scripts/inject.py
+├── hooks/hooks.json         SessionStart + UserPromptSubmit → scripts/inject.py
 ├── scripts/
 │   ├── config.py            load/save/defaults for ~/.claude/human-pace.json
 │   ├── inject.py            hook: assemble enabled rules, print hook JSON
@@ -79,21 +79,29 @@ config is `~/.claude/human-pace.json` and the rating log is `~/.claude/human-pac
 **Runtime:** Python 3.9+ standard library only (macOS system `python3` is 3.9). No third-party
 packages.
 
-### 4.1 Data flow per prompt
+### 4.1 Data flow
 
-1. User submits a prompt; `UserPromptSubmit` runs `inject.py`, which receives the hook JSON on stdin.
+1. `SessionStart` (startup, resume, clear, compact) and `UserPromptSubmit` both run `inject.py`, which
+   receives the hook JSON on stdin, including `hook_event_name` and `session_id`.
 2. `inject.py` exits with no output (no rules) when any of:
    - env var `HUMAN_PACE=0` is set (kill switch for scripts, CI and other automation);
    - the prompt starts with `/pace` (its output stays plain);
    - `python3` is unavailable (the hook command fails open).
 3. Otherwise it loads config (defaults if missing), concatenates the rule fragments for enabled
-   switches in a fixed order, substitutes `{length}`, and prints:
-   `{"hookSpecificOutput": {"hookEventName": "UserPromptSubmit", "additionalContext": "<rules>"}}`
-4. The model receives the rules alongside the prompt every turn, so they survive `/compact` and
-   `/resume` without a SessionStart hook.
+   switches in a fixed order, and substitutes `{length}`.
+4. **Once per session.** On `SessionStart` it prints the rules
+   (`{"hookSpecificOutput": {"hookEventName": "SessionStart", "additionalContext": "<rules>"}}`) and
+   records a hash of them in `~/.claude/human-pace-state/<session_id>`. On `UserPromptSubmit` it
+   prints nothing while the hash is unchanged. After a `/pace` change it prints the new rules once,
+   prefixed "these replace the earlier ones", or a notice to stop formatting when everything is off.
+5. **Fallbacks, all towards sending more:** no usable `session_id`, unreadable or unwritable state,
+   or a session that started before the plugin was installed → the rules go out on the prompt, as
+   they did in 0.1.0. State files older than 7 days are pruned at session start.
 
 **Budget:** all fragments together stay at or under ~150 tokens. They appear in the transcript as a
-system reminder on every turn.
+system reminder once per session and after each `/pace` change (0.1.0 showed them on every turn,
+which cluttered every reply). Long sessions can drift from rules sent once; the rating log is how
+that shows up. A broken config's warning is part of the rules, so it also appears once per session.
 
 ### 4.2 Config file
 
@@ -181,6 +189,6 @@ The repo stays local until the user pushes it.
 ## 8. Out of scope
 
 - Rewriting or post-processing response text (no mechanism exists).
-- Output-style variant, SessionStart hook, per-project config.
+- Output-style variant, per-project config.
 - Applying formatting to anything other than chat replies.
 - Windows support (untested; `python3` assumption).

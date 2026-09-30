@@ -111,6 +111,84 @@ class MainTest(unittest.TestCase):
         self.assertIn("Also tell the user", json.loads(out)["hookSpecificOutput"]["additionalContext"])
 
 
+class OncePerSessionTest(unittest.TestCase):
+    def setUp(self):
+        self.dir = tempfile.TemporaryDirectory()
+        self.config = Path(self.dir.name) / "human-pace.json"
+        self.state = Path(self.dir.name) / "state"
+        self.env = mock.patch.dict(os.environ, {"HUMAN_PACE_CONFIG": str(self.config),
+                                                "HUMAN_PACE_STATE": str(self.state)})
+        self.env.start()
+
+    def tearDown(self):
+        self.env.stop()
+        self.dir.cleanup()
+
+    def send(self, event, session="s1", prompt="hi"):
+        hook_input = {"hook_event_name": event, "session_id": session}
+        if event == "UserPromptSubmit":
+            hook_input["prompt"] = prompt
+        out = io.StringIO()
+        self.assertEqual(inject.main(io.StringIO(json.dumps(hook_input)), out, {}), 0)
+        if not out.getvalue():
+            return None
+        payload = json.loads(out.getvalue())["hookSpecificOutput"]
+        self.assertEqual(payload["hookEventName"], event)
+        return payload["additionalContext"]
+
+    def test_should_send_rules_when_session_starts(self):
+        self.assertIn("Bionic reading", self.send("SessionStart"))
+
+    def test_should_stay_silent_on_prompt_when_rules_unchanged_since_session_start(self):
+        self.send("SessionStart")
+        self.assertIsNone(self.send("UserPromptSubmit"))
+        self.assertIsNone(self.send("UserPromptSubmit"))
+
+    def test_should_resend_rules_once_when_switches_change_mid_session(self):
+        self.send("SessionStart")
+        pc.save_config({**pc.defaults(), "bionic": False}, self.config)
+        update = self.send("UserPromptSubmit")
+        self.assertTrue(update.startswith("human-pace rules changed; these replace the earlier ones."))
+        self.assertNotIn("Bionic reading", update)
+        self.assertIsNone(self.send("UserPromptSubmit"))
+
+    def test_should_tell_model_to_stop_when_everything_turned_off_mid_session(self):
+        self.send("SessionStart")
+        pc.save_config({**pc.defaults(), "bionic": False, "answerFirst": False, "chunks": False,
+                        "actionMarkers": False, "length": 0}, self.config)
+        self.assertEqual(self.send("UserPromptSubmit"), inject.OFF_NOTICE)
+        self.assertIsNone(self.send("UserPromptSubmit"))
+
+    def test_should_resend_when_session_restarts_after_compaction(self):
+        self.send("SessionStart")
+        self.assertIn("Bionic reading", self.send("SessionStart"))
+
+    def test_should_track_sessions_separately(self):
+        self.send("SessionStart", session="a")
+        self.assertIsNone(self.send("UserPromptSubmit", session="a"))
+        self.assertIn("Bionic reading", self.send("UserPromptSubmit", session="b"))
+
+    def test_should_send_every_prompt_when_session_id_missing_or_unsafe(self):
+        for session in (None, "../escape"):
+            with self.subTest(session=session):
+                self.assertIn("Bionic reading", self.send("UserPromptSubmit", session=session))
+                self.assertIn("Bionic reading", self.send("UserPromptSubmit", session=session))
+
+    def test_should_fall_back_to_every_prompt_when_state_unwritable(self):
+        self.state.write_text("a file where the directory should be", encoding="utf-8")
+        self.assertIn("Bionic reading", self.send("SessionStart"))
+        self.assertIn("Bionic reading", self.send("UserPromptSubmit"))
+
+    def test_should_prune_state_older_than_a_week_when_session_starts(self):
+        self.state.mkdir()
+        old = self.state / "old-session"
+        old.write_text("x", encoding="utf-8")
+        os.utime(old, (0, 0))
+        self.send("SessionStart")
+        self.assertFalse(old.exists())
+        self.assertTrue((self.state / "s1").exists())
+
+
 class ScriptTest(unittest.TestCase):
     def run_script(self, extra_env):
         with tempfile.TemporaryDirectory() as tmp:
@@ -130,11 +208,13 @@ class ScriptTest(unittest.TestCase):
 
 
 class HooksJsonTest(unittest.TestCase):
-    def test_should_register_fail_open_prompt_hook(self):
+    def test_should_register_fail_open_hook_for_session_start_and_prompts(self):
         hooks = json.loads((ROOT / "hooks" / "hooks.json").read_text(encoding="utf-8"))
-        command = hooks["hooks"]["UserPromptSubmit"][0]["hooks"][0]["command"]
-        self.assertIn("${CLAUDE_PLUGIN_ROOT}/scripts/inject.py", command)
-        self.assertTrue(command.endswith("|| true"))
+        for event in ("SessionStart", "UserPromptSubmit"):
+            with self.subTest(event=event):
+                command = hooks["hooks"][event][0]["hooks"][0]["command"]
+                self.assertIn("${CLAUDE_PLUGIN_ROOT}/scripts/inject.py", command)
+                self.assertTrue(command.endswith("|| true"))
 
 
 if __name__ == "__main__":
