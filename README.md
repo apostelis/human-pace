@@ -1,7 +1,7 @@
 # human-pace
 
-A Claude Code plugin that makes replies easier to follow: bionic reading, answer first, short
-chunks, marked action items and a length cap. Every part can be switched on or off.
+**A** **Cl**aude **Co**de **pl**ugin **th**at **ma**kes **rep**lies **ea**sier **t**o **fo**llow: **bi**onic **rea**ding, **an**swer **fi**rst, **sh**ort
+**ch**unks, **ma**rked **ac**tion **it**ems **a**nd **a** **le**ngth **c**ap. **Ev**ery **pa**rt **c**an **b**e **swi**tched **o**n **o**r **o**ff.
 
 ## Install
 
@@ -10,10 +10,10 @@ chunks, marked action items and a length cap. Every part can be switched on or o
 /plugin install human-pace@human-pace
 ```
 
-The rules are sent once when a session starts (and again after `/compact` or `/resume`), not above
-every reply.
+**T**he **ru**les **a**re **se**nt **on**ce **wh**en **a** **ses**sion **st**arts (**a**nd **ag**ain **af**ter `/compact` **o**r `/resume`), **n**ot **ab**ove
+**ev**ery **re**ply.
 
-Requires `python3` (3.9+). Without it the plugin does nothing, and your prompts are never blocked.
+**Req**uires `python3` (3.9+). **Wit**hout **i**t **t**he **pl**ugin **do**es **not**hing, **a**nd **yo**ur **pro**mpts **a**re **ne**ver **blo**cked.
 
 ## Use
 
@@ -26,11 +26,11 @@ Requires `python3` (3.9+). Without it the plugin does nothing, and your prompts 
 | `/pace rate <1-5> [note]` | Log how the current setting feels |
 | `/pace report` | Average rating per setting |
 
-Changes apply from your next prompt; the updated rules are sent once. Settings live in `~/.claude/human-pace.json`, and ratings in
+**Cha**nges **ap**ply **fr**om **yo**ur **ne**xt **pr**ompt; **t**he **upd**ated **ru**les **a**re **se**nt **on**ce. **Set**tings **li**ve **i**n `~/.claude/human-pace.json`, **a**nd **rat**ings **i**n
 `~/.claude/human-pace-log.jsonl`.
 
-Headless runs (`claude -p`, the Agent SDK) are skipped, so scripts and CI get plain output.
-Set `HUMAN_PACE=1` to force the rules on there, or `HUMAN_PACE=0` to turn them off everywhere.
+**Hea**dless **ru**ns (`claude -p`, **t**he **Ag**ent **S**DK) **a**re **ski**pped, **s**o **scr**ipts **a**nd **C**I **g**et **pl**ain **ou**tput.
+**S**et `HUMAN_PACE=1` **t**o **fo**rce **t**he **ru**les **o**n **th**ere, **o**r `HUMAN_PACE=0` **t**o **tu**rn **th**em **o**ff **ever**ywhere.
 
 ## Develop
 
@@ -39,4 +39,4 @@ python3 -m unittest discover -s tests -v     # unit tests
 python3 compliance/run.py                    # score real replies (calls claude -p, costs a few cents)
 ```
 
-Rule wording lives in `rules/*.md`. Keep all fragments together under 700 characters.
+**Ru**le **wor**ding **li**ves **i**n `rules/*.md`. **Ke**ep **a**ll **fra**gments **tog**ether **un**der 700 **char**acters.

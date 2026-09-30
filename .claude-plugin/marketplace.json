@@ -6,7 +6,7 @@
     {
       "name": "human-pace",
       "description": "Human-paced replies: bionic reading, answer first, short chunks, action markers and a length cap, each toggleable with /pace.",
-      "version": "0.2.0",
+      "version": "0.3.0",
       "source": "./"
     }
   ]
