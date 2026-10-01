@@ -1,4 +1,7 @@
+import contextlib
+import io
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -84,6 +87,33 @@ class HarnessEnvTest(unittest.TestCase):
         env = run.harness_env("/scratch")
         self.assertEqual(env["HUMAN_PACE"], "1")
         self.assertEqual(env["HUMAN_PACE_CONFIG"], str(Path("/scratch") / "absent.json"))
+
+
+class ApproachScoringTest(unittest.TestCase):
+    def test_should_score_reply_against_configured_approach(self):
+        reply = to_bionic("The build failed because the merge dropped a plugin.", "vowels")
+        cfg = {**pc.defaults(), "bionicApproach": "vowels"}
+        self.assertTrue(score.score_reply(reply, cfg)["bionic >= 90%"])
+        self.assertFalse(score.score_reply(reply, pc.defaults())["bionic >= 90%"])
+
+
+class HarnessArgsTest(unittest.TestCase):
+    def test_should_return_defaults_when_no_flags(self):
+        self.assertEqual(run.parse_args([]), pc.defaults())
+
+    def test_should_set_approach_and_trigger_when_flags_given(self):
+        cfg = run.parse_args(["--approach", "third+anchor", "--anchor-trigger", "6"])
+        self.assertEqual((cfg["bionicApproach"], cfg["anchorTrigger"]), ("third+anchor", 6))
+
+    def test_should_exit_when_approach_unknown(self):
+        with self.assertRaises(SystemExit), contextlib.redirect_stderr(io.StringIO()):
+            run.parse_args(["--approach", "bold"])
+
+    def test_should_write_config_for_hook_when_cfg_given(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            cfg = {**pc.defaults(), "bionicApproach": "consonants"}
+            env = run.harness_env(tmp, cfg)
+            self.assertEqual(pc.load_config(Path(env["HUMAN_PACE_CONFIG"])), (cfg, None))
 
 
 class PromptsTest(unittest.TestCase):
