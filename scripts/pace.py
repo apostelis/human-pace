@@ -14,12 +14,21 @@ USAGE = """Usage:
   /pace                        show switches
   /pace <switch> on|off        switches: bionic, answerFirst, chunks, actionMarkers
   /pace length <n>             prose word cap, 0 = no cap
+  /pace preset focus|light|off focus: all on · light: no bionic, 300 words · off: all off
+  /pace on | /pace off         same as preset focus | preset off
   /pace reset                  restore defaults
   /pace rate <1-5> [note]      log how the current setting feels
   /pace report                 average rating per setting
 Notes cannot contain double quotes, backticks or $."""
 
 SWITCH_NAMES = {name.lower(): name for name in pace_config.SWITCHES}
+PRESETS = {
+    "focus": pace_config.defaults(),
+    "light": {**pace_config.defaults(), "bionic": False, "length": 300},
+    # length 0 too: a cap alone would still send the length rule.
+    "off": {**{name: False for name in pace_config.SWITCHES}, "length": 0},
+}
+SHORTCUTS = {"on": "focus", "off": "off"}
 NUMBER = re.compile(r"[0-9]+")  # ASCII only: "²".isdigit() is True but int("²") raises
 
 
@@ -109,6 +118,10 @@ def run(args: List[str], now: Optional[datetime] = None) -> str:
     if command == "length" and len(rest) == 1 and NUMBER.fullmatch(rest[0]):
         cfg["length"] = int(rest[0])
         return _save(cfg)
+    if command == "preset" and len(rest) == 1 and rest[0].lower() in PRESETS:
+        return _save(dict(PRESETS[rest[0].lower()]))
+    if command in SHORTCUTS and not rest:
+        return _save(dict(PRESETS[SHORTCUTS[command]]))
     if command == "reset" and not rest:
         return _save(pace_config.defaults())
     if command == "rate":

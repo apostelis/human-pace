@@ -171,6 +171,12 @@ class OncePerSessionTest(unittest.TestCase):
         self.assertEqual(self.send("UserPromptSubmit"), inject.OFF_NOTICE)
         self.assertIsNone(self.send("UserPromptSubmit"))
 
+    def test_should_stay_silent_all_session_when_everything_off(self):
+        pc.save_config({**pc.defaults(), "bionic": False, "answerFirst": False, "chunks": False,
+                        "actionMarkers": False, "length": 0}, self.config)
+        self.assertIsNone(self.send("SessionStart"))
+        self.assertIsNone(self.send("UserPromptSubmit"))
+
     def test_should_resend_when_session_restarts_after_compaction(self):
         self.send("SessionStart")
         self.assertIn("Bionic reading", self.send("SessionStart"))

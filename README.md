@@ -15,6 +15,9 @@
 
 **Req**uires `python3` (3.9+). **Wit**hout **i**t **t**he **pl**ugin **do**es **not**hing, **a**nd **yo**ur **pro**mpts **a**re **ne**ver **blo**cked.
 
+**Con**text **co**st: **un**der 200 **to**kens **o**f **ru**les, **se**nt **on**ce **p**er **ses**sion, **pl**us **ab**out 40 **f**or **t**he `/pace` **com**mand.
+**Wi**th `/pace off` **not**hing **i**s **se**nt.
+
 ## Use
 
 | Command | Effect |
@@ -22,6 +25,8 @@
 | `/pace` | Show switches |
 | `/pace <switch> on\|off` | `bionic`, `answerFirst`, `chunks`, `actionMarkers` |
 | `/pace length <n>` | Prose word cap, `0` = no cap |
+| `/pace preset focus\|light\|off` | `focus`: all on · `light`: no bionic, 300 words · `off`: all off |
+| `/pace on` / `/pace off` | Same as `preset focus` / `preset off` |
 | `/pace reset` | Restore defaults |
 | `/pace rate <1-5> [note]` | Log how the current setting feels |
 | `/pace report` | Average rating per setting |
@@ -40,3 +45,7 @@ python3 compliance/run.py                    # score real replies (calls claude 
 ```
 
 **Ru**le **wor**ding **li**ves **i**n `rules/*.md`. **Ke**ep **a**ll **fra**gments **tog**ether **un**der 700 **char**acters.
+
+## License
+
+MIT; **s**ee `LICENSE`.
