@@ -25,7 +25,9 @@ Find out whether the formatting helps, instead of assuming it does.
   - `consonants`: bold only the consonants.
   - `third+anchor`: the first third, plus one consonant near the end of long words. A word is
     long at 8 or more letters by default, configurable with `/pace anchor <n>` and stored in the
-    config. Still to decide: which consonant (for example the last one).
+    config. The anchor is the last consonant when the word ends in a vowel (`experience` → the
+    `c`), and the second-to-last consonant when it ends in a consonant (`understand` → the second
+    `n`).
 
   Each strategy needs rule wording that fits the 700-character budget and a matching checker in
   `compliance/bionic.py`. `vowels` and `consonants` bold scattered single letters, which costs more
