@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.5.0 — 2026-10-01
 
 - Bionic approaches: `/pace bionic third|vowels|consonants|third+anchor` and `/pace anchor-trigger <n>`.
 - `third` rounds up for words of up to 5 letters and down for longer ones: a 7-letter word gets 2
