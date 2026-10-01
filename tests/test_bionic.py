@@ -8,9 +8,9 @@ import bionic  # noqa: E402
 
 
 class BoldLengthTest(unittest.TestCase):
-    def test_should_bold_a_third_rounded_down_with_minimum_one(self):
-        cases = {"a": 1, "to": 1, "the": 1, "focus": 1, "plugin": 2, "reading": 2, "patterns": 2,
-                 "everybody": 3, "understand": 3, "don't": 1}
+    def test_should_round_up_to_five_letters_and_down_above_with_minimum_one(self):
+        cases = {"a": 1, "to": 1, "the": 1, "word": 2, "focus": 2, "about": 2, "plugin": 2, "reading": 2,
+                 "patterns": 2, "everybody": 3, "understand": 3, "don't": 2}
         for word, expected in cases.items():
             with self.subTest(word=word):
                 self.assertEqual(bionic.bold_length(word), expected)
@@ -18,15 +18,15 @@ class BoldLengthTest(unittest.TestCase):
 
 class BionicWordTest(unittest.TestCase):
     def test_should_bold_prefix_when_given_spec_examples(self):
-        cases = {"the": "**t**he", "focus": "**f**ocus", "reading": "**re**ading",
-                 "understand": "**und**erstand", "don't": "**d**on't", "I'm": "**I**'m"}
+        cases = {"the": "**t**he", "focus": "**fo**cus", "reading": "**re**ading",
+                 "understand": "**und**erstand", "don't": "**do**n't", "I'm": "**I**'m"}
         for word, expected in cases.items():
             with self.subTest(word=word):
                 self.assertEqual(bionic.third_word(word), expected)
 
     def test_should_split_on_hyphen_and_skip_numbers_when_converting_text(self):
         self.assertEqual(bionic.to_bionic("Re-add the plugin 3 times."),
-                         "**R**e-**a**dd **t**he **pl**ugin 3 **t**imes.")
+                         "**R**e-**a**dd **t**he **pl**ugin 3 **ti**mes.")
 
 
 class VowelTest(unittest.TestCase):
@@ -77,15 +77,16 @@ class AnchorWordTest(unittest.TestCase):
     def test_should_merge_when_anchor_follows_prefix(self):
         # "planter": 7 letters, trigger 7, prefix "pl", ends in r -> second-to-last consonant is t.
         self.assertEqual(bionic.anchor_word("planter", 7), "**pl**an**t**er")
-        # "abbey": 5 letters, trigger 2, prefix "a", ends in y (vowel) -> last consonant is the 2nd b.
-        self.assertEqual(bionic.anchor_word("abbey", 2), "**a**b**b**ey")
+        # "abbey": 5 letters, trigger 2, prefix "ab", ends in y (vowel) -> last consonant is the 2nd b,
+        # right after the prefix: one span.
+        self.assertEqual(bionic.anchor_word("abbey", 2), "**abb**ey")
         # "ebb": 3 letters, trigger 2, prefix "e", ends in b -> second-to-last consonant is the 1st b,
         # right after the prefix: one span.
         self.assertEqual(bionic.anchor_word("ebb", 2), "**eb**b")
 
     def test_should_bold_as_third_when_anchor_inside_prefix_or_missing(self):
-        # "queue": prefix "q", ends in a vowel -> last consonant is q, already bold.
-        self.assertEqual(bionic.anchor_word("queue", 2), "**q**ueue")
+        # "queue": prefix "qu", ends in a vowel -> last consonant is q, already bold.
+        self.assertEqual(bionic.anchor_word("queue", 2), "**qu**eue")
         # "aeiouaei": no consonant at all.
         self.assertEqual(bionic.anchor_word("aeiouaei", 8), "**ae**iouaei")
 
@@ -93,7 +94,7 @@ class AnchorWordTest(unittest.TestCase):
         # shouldn't: 8 letters, ends in t -> second-to-last consonant is n.
         self.assertEqual(bionic.anchor_word("shouldn't"), "**sh**ould**n**'t")
         # can't: 4 letters, under the trigger.
-        self.assertEqual(bionic.anchor_word("can't"), "**c**an't")
+        self.assertEqual(bionic.anchor_word("can't"), "**ca**n't")
 
 
 class WordFunctionTest(unittest.TestCase):
@@ -114,20 +115,20 @@ class ScoreBionicTest(unittest.TestCase):
         self.assertEqual(bionic.score_bionic(text), (9, 9))
 
     def test_should_count_wrong_prefix_when_bolding_too_much(self):
-        self.assertEqual(bionic.score_bionic("**f**ocus **readi**ng"), (1, 2))
+        self.assertEqual(bionic.score_bionic("**fo**cus **readi**ng"), (1, 2))
 
     def test_should_count_emphasis_bold_as_wrong_when_bionic_on(self):
-        self.assertEqual(bionic.score_bionic("**Note:** **f**ocus"), (1, 2))
+        self.assertEqual(bionic.score_bionic("**Note:** **fo**cus"), (1, 2))
 
     def test_should_ignore_code_paths_urls_headings_tables_and_identifiers(self):
         markdown = ("# Heading words\n"
-                    "**f**ocus `inline code` src/app.py answerFirst e.g. https://x.io/a\n"
+                    "**fo**cus `inline code` src/app.py answerFirst e.g. https://x.io/a\n"
                     "| cell | words |\n"
                     "```\nplain words here\n```\n")
         self.assertEqual(bionic.score_bionic(markdown), (1, 1))
 
     def test_should_score_bullets_and_action_line_when_formatted(self):
-        self.assertEqual(bionic.score_bionic("- **f**ocus\n▶ **Y**ou: **ap**prove"), (3, 3))
+        self.assertEqual(bionic.score_bionic("- **fo**cus\n▶ **Y**ou: **ap**prove"), (3, 3))
 
     def test_should_return_zero_total_when_no_prose(self):
         self.assertEqual(bionic.score_bionic("```\ncode\n```"), (0, 0))

@@ -1,1 +1,1 @@
-Bionic reading: bold the first third of every prose word, rounded down, min 1 letter: **t**he **f**ocus **re**ading **R**e-**a**dd. Numbers, headings and tables stay plain. No other bold.
+Bionic reading: bold the first third of each prose word (round up to 5 letters, down above; min 1): **t**he **fo**cus **re**ading **R**e-**a**dd. Numbers, headings and tables stay plain. No other bold.
