@@ -46,9 +46,10 @@
 ```
 python3 -m unittest discover -s tests -v     # unit tests
 python3 compliance/run.py                    # score real replies (calls claude -p, costs a few cents)
+python3 compliance/run.py --approach vowels  # score one approach; also --anchor-trigger <n>
 ```
 
-**Ru**le **wo**rding **li**ves **i**n `rules/*.md`. **Ke**ep **a**ll **fra**gments **to**gether **un**der 700 **cha**racters.
+**Ru**le **wo**rding **li**ves **i**n `rules/*.md`. **Ke**ep **a**ll **fra**gments **to**gether **un**der 700 **cha**racters **p**er **ap**proach.
 
 ## License
 
