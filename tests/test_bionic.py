@@ -134,6 +134,29 @@ class ScoreBionicTest(unittest.TestCase):
         self.assertEqual(bionic.score_bionic("```\ncode\n```"), (0, 0))
 
 
+RULES = Path(__file__).resolve().parent.parent / "rules"
+RULE_FILES = {"third": "bionic-third.md", "vowels": "bionic-vowels.md", "consonants": "bionic-consonants.md",
+              "third+anchor": "bionic-third-anchor.md"}
+
+
+class RuleExamplesTest(unittest.TestCase):
+    def rule(self, approach):
+        return (RULES / RULE_FILES[approach]).read_text(encoding="utf-8").replace("{anchorTrigger}", "8")
+
+    def test_should_match_checker_for_every_bold_example_in_rule_fragments(self):
+        for approach in bionic.APPROACHES:
+            examples = [part.strip(".,:;") for token in self.rule(approach).split()
+                        for part in token.split("-") if "**" in part]
+            self.assertTrue(examples, approach)
+            for example in examples:
+                with self.subTest(approach=approach, example=example):
+                    self.assertEqual(bionic.word_function(approach)(example.replace("**", "")), example)
+
+    def test_should_show_anchor_that_differs_from_the_letter_before_the_last_consonant(self):
+        # In "understand" the letter before the last consonant and the anchor are both "n".
+        self.assertIn("**inf**orma**t**ion", self.rule("third+anchor"))
+
+
 class BoldInCodeTest(unittest.TestCase):
     def test_should_detect_bold_inside_fenced_or_inline_code(self):
         self.assertTrue(bionic.bold_in_code("```\n**fi**x: retry\n```"))

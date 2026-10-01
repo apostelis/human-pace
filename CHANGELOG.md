@@ -5,7 +5,8 @@
 - Bionic approaches: `/pace bionic third|vowels|consonants|third+anchor` and `/pace anchor-trigger <n>`.
 - `third` rounds up for words of up to 5 letters and down for longer ones: a 7-letter word gets 2
   bold letters, not 3.
-- `/pace report` compares approaches; ratings from earlier versions count as `third`.
+- `/pace report` compares approaches; earlier ratings with bionic on are shown apart as
+  `third, 0.4 rounding`.
 - `compliance/run.py --approach <name> [--anchor-trigger <n>]` scores one approach.
 
 ## 0.4.0 — 2026-10-01

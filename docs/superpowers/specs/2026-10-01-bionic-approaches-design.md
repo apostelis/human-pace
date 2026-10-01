@@ -119,8 +119,9 @@ The usage text and the `argument-hint` in `commands/pace.md` list the approaches
 ## 7. Report
 
 - Ratings already store the whole config, so new entries carry the approach.
-- Old entries have no `bionicApproach` or `anchorTrigger`; validation fills in `third` and 8, which
-  is what they used.
+- Old entries have no `bionicApproach` or `anchorTrigger`; validation fills in `third` and 8. They
+  used the old rounding (always up), so entries with bionic on are kept in their own group, shown
+  as `bionic on (third, 0.4 rounding)`. Old entries with bionic off group with new ones.
 - Before grouping, settings that have no effect are dropped from the key: the approach and anchor
   trigger when `bionic` is off, and the anchor trigger unless the approach is `third+anchor`. So
   `vowels` ratings taken with different anchor triggers land in one group.

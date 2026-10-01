@@ -274,11 +274,19 @@ class ReportTest(PaceTestBase):
         self.assertEqual(pace.run(["report"]),
                          "3.0 avg · 2 ratings · bionic on (third) · answerFirst on · chunks on · actionMarkers on · length 200")
 
-    def test_should_group_old_entries_with_new_third_entries(self):
+    def test_should_keep_old_rounding_ratings_apart_from_new_third(self):
         old = {"bionic": True, "answerFirst": True, "chunks": True, "actionMarkers": True, "length": 200}
         self.write_log([json.dumps({"ts": "t", "switches": old, "score": 2, "note": ""}), self.entry(4)])
+        self.assertEqual(pace.run(["report"]).splitlines(), [
+            "4.0 avg · 1 rating · bionic on (third) · answerFirst on · chunks on · actionMarkers on · length 200",
+            "2.0 avg · 1 rating · bionic on (third, 0.4 rounding) · answerFirst on · chunks on · actionMarkers on · length 200",
+        ])
+
+    def test_should_group_old_entries_with_bionic_off_like_new_ones(self):
+        old = {"bionic": False, "answerFirst": True, "chunks": True, "actionMarkers": True, "length": 200}
+        self.write_log([json.dumps({"ts": "t", "switches": old, "score": 2, "note": ""}), self.entry(4, bionic=False)])
         self.assertEqual(pace.run(["report"]),
-                         "3.0 avg · 2 ratings · bionic on (third) · answerFirst on · chunks on · actionMarkers on · length 200")
+                         "3.0 avg · 2 ratings · bionic off · answerFirst on · chunks on · actionMarkers on · length 200")
 
     def test_should_ignore_settings_without_effect_when_grouping(self):
         self.write_log([self.entry(4, bionicApproach="vowels", anchorTrigger=5),

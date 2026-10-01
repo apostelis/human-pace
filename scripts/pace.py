@@ -38,6 +38,8 @@ NUMBER = re.compile(r"[0-9]+")  # ASCII only: "²".isdigit() is True but int("²
 def _bionic_label(cfg: dict) -> str:
     if not cfg["bionic"]:
         return "bionic off"
+    if cfg.get("legacyRounding"):
+        return "bionic on (third, 0.4 rounding)"
     if cfg["bionicApproach"] == "third+anchor":
         return f"bionic on (third+anchor, {cfg['anchorTrigger']}+ letters)"
     return f"bionic on ({cfg['bionicApproach']})"
@@ -117,6 +119,8 @@ def report() -> str:
         setting, invalid = pace_config.validate(switches)
         if invalid:
             continue  # hand-edited into something /pace rate never writes
+        if setting["bionic"] and "bionicApproach" not in switches:
+            setting["legacyRounding"] = True  # rated before 0.5: third rounded up for every word length
         key = json.dumps(effective_setting(setting), sort_keys=True)
         scores.setdefault(key, []).append(score)
         settings[key] = setting
