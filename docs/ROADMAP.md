@@ -46,9 +46,16 @@ Roll it out without forcing it on anyone.
 
 Ideas to try once 0.5 can measure whether a setting helps. Not scheduled.
 
-- Auto-pace: adjust the pace to the speed of the session. A `Stop` hook records when each reply
-  ends and `UserPromptSubmit` records when the next prompt arrives; the gap is roughly reading and
-  thinking time. Fast, short exchanges could loosen the rules (higher length cap, `light`), slow
-  ones tighten them (`focus`, lower cap). Open questions: which signal is honest (the gap also
-  includes time away from the keyboard), how quickly to react without flip-flopping, and how to show
-  the user what changed. Off by default, local only, and visible in `/pace`.
+- Auto-pace: adjust the pace to how the user is engaging with the session.
+  - Signals, recorded by a `Stop` hook (reply ends) and `UserPromptSubmit` (next prompt):
+    - Gap between reply and next prompt: reading and thinking time. Time away from the keyboard
+      pollutes it, so long gaps are capped or ignored.
+    - Follow-up size and kind: a streak of short approvals ("yes", "ok", "merge it") means the user
+      is relaying Claude rather than engaging with it, the meat-proxy pattern this plugin exists for.
+  - Two opposing responses to a rubber-stamp streak, to be tested against each other:
+    - More: Claude gives more context, so the user can actually judge what they approve.
+    - Less: Claude gives less and ends on a question that a plain "yes" cannot answer, so the user
+      has to commit to the session.
+  - Compare them with `/pace experiment` and the rating log; measure whether the streaks shorten.
+  - Open questions: how quickly to react without flip-flopping, and how to show the user what
+    changed. Off by default, local only, and visible in `/pace`.
