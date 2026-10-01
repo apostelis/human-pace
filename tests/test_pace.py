@@ -33,7 +33,7 @@ class PaceTestBase(unittest.TestCase):
 class ShowAndChangeTest(PaceTestBase):
     def test_should_show_defaults_when_no_config(self):
         self.assertEqual(pace.run([]),
-                         "human-pace: bionic on · answerFirst on · chunks on · actionMarkers on · length 200")
+                         "human-pace: bionic on (third) · answerFirst on · chunks on · actionMarkers on · length 200")
 
     def test_should_persist_switch_when_toggled_off(self):
         out = pace.run(["bionic", "off"])
@@ -91,9 +91,10 @@ class PresetTest(PaceTestBase):
 
     def test_should_match_presets_when_on_and_off_shortcuts_used(self):
         pace.run(["off"])
-        self.assertEqual(pc.load_config()[0], pace.PRESETS["off"])
+        cfg = pc.load_config()[0]
+        self.assertEqual({key: cfg[key] for key in pace.PRESETS["off"]}, pace.PRESETS["off"])
         pace.run(["ON"])
-        self.assertEqual(pc.load_config()[0], pace.PRESETS["focus"])
+        self.assertEqual(pc.load_config()[0], pc.DEFAULTS)
 
     def test_should_print_usage_and_change_nothing_when_preset_unknown(self):
         for args in (["preset"], ["preset", "turbo"], ["preset", "off", "now"], ["off", "now"]):
@@ -107,6 +108,62 @@ class PresetTest(PaceTestBase):
             with self.subTest(preset=name):
                 self.assertIn(name, pace.USAGE)
                 self.assertIn(name, hint)
+
+
+class ApproachTest(PaceTestBase):
+    def test_should_set_approach_and_turn_bionic_on(self):
+        pace.run(["bionic", "off"])
+        out = pace.run(["bionic", "Vowels"])
+        self.assertIn("bionic on (vowels)", out)
+        cfg = pc.load_config()[0]
+        self.assertTrue(cfg["bionic"])
+        self.assertEqual(cfg["bionicApproach"], "vowels")
+
+    def test_should_accept_every_approach(self):
+        for approach in pc.APPROACHES:
+            with self.subTest(approach=approach):
+                pace.run(["bionic", approach])
+                self.assertEqual(pc.load_config()[0]["bionicApproach"], approach)
+
+    def test_should_show_trigger_only_for_third_anchor(self):
+        self.assertIn("bionic on (third+anchor, 8+ letters)", pace.run(["bionic", "third+anchor"]))
+        self.assertIn("bionic on (third+anchor, 10+ letters)", pace.run(["anchor-trigger", "10"]))
+        self.assertIn("bionic on (consonants) ·", pace.run(["bionic", "consonants"]))
+
+    def test_should_set_trigger_without_changing_approach(self):
+        pace.run(["bionic", "vowels"])
+        pace.run(["anchor-trigger", "5"])
+        cfg = pc.load_config()[0]
+        self.assertEqual((cfg["bionicApproach"], cfg["anchorTrigger"]), ("vowels", 5))
+
+    def test_should_print_usage_and_change_nothing_when_approach_or_trigger_invalid(self):
+        for args in (["bionic", "bold"], ["anchor-trigger"], ["anchor-trigger", "1"],
+                     ["anchor-trigger", "x"], ["anchor-trigger", "8", "9"], ["bionic", "vowels", "now"]):
+            with self.subTest(args=args):
+                self.assertEqual(pace.run(args), pace.USAGE)
+                self.assertFalse(self.config.exists())
+
+    def test_should_keep_approach_and_trigger_when_preset_applied(self):
+        pace.run(["bionic", "third+anchor"])
+        pace.run(["anchor-trigger", "6"])
+        for name in ("light", "off", "focus"):
+            with self.subTest(preset=name):
+                pace.run(["preset", name])
+                cfg = pc.load_config()[0]
+                self.assertEqual((cfg["bionicApproach"], cfg["anchorTrigger"]), ("third+anchor", 6))
+
+    def test_should_restore_approach_and_trigger_when_reset(self):
+        pace.run(["bionic", "vowels"])
+        pace.run(["anchor-trigger", "5"])
+        pace.run(["reset"])
+        self.assertEqual(pc.load_config(), (pc.DEFAULTS, None))
+
+    def test_should_list_approaches_and_trigger_in_usage_and_command_hint(self):
+        hint = (ROOT / "commands" / "pace.md").read_text(encoding="utf-8")
+        for word in (*pc.APPROACHES, "anchor-trigger"):
+            with self.subTest(word=word):
+                self.assertIn(word, pace.USAGE)
+                self.assertIn(word, hint)
 
 
 class MainTest(PaceTestBase):
@@ -173,7 +230,7 @@ class RateTest(PaceTestBase):
         self.log.write_text('{"ts": "t", "swi', encoding="utf-8")  # crash mid-write, no newline
         pace.run(["rate", "5"], now=NOW)
         self.assertEqual(pace.run(["report"]),
-                         "5.0 avg · 1 rating · bionic on · answerFirst on · chunks on · actionMarkers on · length 200")
+                         "5.0 avg · 1 rating · bionic on (third) · answerFirst on · chunks on · actionMarkers on · length 200")
 
     def test_should_report_error_when_log_unwritable(self):
         self.log.mkdir(parents=True)  # a directory where the file should be
@@ -194,7 +251,7 @@ class ReportTest(PaceTestBase):
     def test_should_group_by_setting_and_sort_by_mean_when_log_has_entries(self):
         self.write_log([self.entry(2, bionic=False), self.entry(4), self.entry(5)])
         self.assertEqual(pace.run(["report"]).splitlines(), [
-            "4.5 avg · 2 ratings · bionic on · answerFirst on · chunks on · actionMarkers on · length 200",
+            "4.5 avg · 2 ratings · bionic on (third) · answerFirst on · chunks on · actionMarkers on · length 200",
             "2.0 avg · 1 rating · bionic off · answerFirst on · chunks on · actionMarkers on · length 200",
         ])
 
@@ -202,7 +259,7 @@ class ReportTest(PaceTestBase):
         self.log.parent.mkdir(parents=True)
         self.log.write_bytes(self.entry(4).encode() + b'\n{"note": "caf\xc3\n' + self.entry(2).encode() + b"\n")
         self.assertEqual(pace.run(["report"]),
-                         "3.0 avg · 2 ratings · bionic on · answerFirst on · chunks on · actionMarkers on · length 200")
+                         "3.0 avg · 2 ratings · bionic on (third) · answerFirst on · chunks on · actionMarkers on · length 200")
 
     def test_should_skip_hand_edited_entries_when_values_invalid(self):
         bad_score = json.dumps({"ts": "t", "switches": pc.DEFAULTS, "score": 99, "note": ""})
@@ -210,12 +267,33 @@ class ReportTest(PaceTestBase):
         bad_length = json.dumps({"ts": "t", "switches": {**pc.DEFAULTS, "length": "long"}, "score": 1, "note": ""})
         self.write_log([self.entry(4), bad_score, bad_switch, bad_length])
         self.assertEqual(pace.run(["report"]),
-                         "4.0 avg · 1 rating · bionic on · answerFirst on · chunks on · actionMarkers on · length 200")
+                         "4.0 avg · 1 rating · bionic on (third) · answerFirst on · chunks on · actionMarkers on · length 200")
 
     def test_should_skip_corrupt_lines_when_reporting(self):
         self.write_log([self.entry(4), '{"ts": "t", "swi', "[]", '{"switches": {}, "score": "5"}', self.entry(2)])
         self.assertEqual(pace.run(["report"]),
-                         "3.0 avg · 2 ratings · bionic on · answerFirst on · chunks on · actionMarkers on · length 200")
+                         "3.0 avg · 2 ratings · bionic on (third) · answerFirst on · chunks on · actionMarkers on · length 200")
+
+    def test_should_group_old_entries_with_new_third_entries(self):
+        old = {"bionic": True, "answerFirst": True, "chunks": True, "actionMarkers": True, "length": 200}
+        self.write_log([json.dumps({"ts": "t", "switches": old, "score": 2, "note": ""}), self.entry(4)])
+        self.assertEqual(pace.run(["report"]),
+                         "3.0 avg · 2 ratings · bionic on (third) · answerFirst on · chunks on · actionMarkers on · length 200")
+
+    def test_should_ignore_settings_without_effect_when_grouping(self):
+        self.write_log([self.entry(4, bionicApproach="vowels", anchorTrigger=5),
+                        self.entry(2, bionicApproach="vowels", anchorTrigger=9),
+                        self.entry(5, bionic=False, bionicApproach="consonants"),
+                        self.entry(3, bionic=False)])
+        self.assertEqual(pace.run(["report"]).splitlines(), [
+            "4.0 avg · 2 ratings · bionic off · answerFirst on · chunks on · actionMarkers on · length 200",
+            "3.0 avg · 2 ratings · bionic on (vowels) · answerFirst on · chunks on · actionMarkers on · length 200",
+        ])
+
+    def test_should_split_groups_by_trigger_when_third_anchor(self):
+        self.write_log([self.entry(4, bionicApproach="third+anchor", anchorTrigger=6),
+                        self.entry(2, bionicApproach="third+anchor", anchorTrigger=9)])
+        self.assertEqual(len(pace.run(["report"]).splitlines()), 2)
 
 
 if __name__ == "__main__":
