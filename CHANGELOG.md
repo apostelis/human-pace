@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.6.0 — 2026-10-01
 
 - Drift guard: the rules are resent every 10 prompts so they don't fade in long sessions;
   `/pace drift-guard <n>` changes the interval, `0` turns it off. Ratings ignore it.
