@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.5.1 — 2026-10-01
+
+- Roadmap and spec: the planned `/pace experiment` command is renamed `/pace experimental`.
+
 ## 0.5.0 — 2026-10-01
 
 - Bionic approaches: `/pace bionic third|vowels|consonants|third+anchor` and `/pace anchor-trigger <n>`.
