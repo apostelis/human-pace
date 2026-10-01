@@ -42,7 +42,7 @@ Roll it out without forcing it on anyone.
 - CI runs the compliance harness when `rules/*.md` change.
 - Spike: can `claude plugin eval` replace the homegrown harness in `compliance/`?
 
-## Experimental
+## Ideas
 
 Ideas to try once 0.5 can measure whether a setting helps. Not scheduled.
 
