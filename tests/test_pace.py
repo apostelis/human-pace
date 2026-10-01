@@ -72,6 +72,43 @@ class ShowAndChangeTest(PaceTestBase):
         self.assertEqual(pc.load_config()[1], None)
 
 
+class PresetTest(PaceTestBase):
+    def test_should_turn_everything_on_when_focus_preset(self):
+        pace.run(["bionic", "off"])
+        pace.run(["preset", "focus"])
+        self.assertEqual(pc.load_config(), (pc.DEFAULTS, None))
+
+    def test_should_drop_only_bionic_and_raise_cap_when_light_preset(self):
+        out = pace.run(["preset", "light"])
+        self.assertIn("Applies from your next prompt.", out)
+        self.assertEqual(pc.load_config()[0], {**pc.DEFAULTS, "bionic": False, "length": 300})
+
+    def test_should_turn_everything_off_including_cap_when_off_preset(self):
+        pace.run(["preset", "off"])
+        cfg = pc.load_config()[0]
+        self.assertFalse(any(cfg[name] for name in pc.SWITCHES))
+        self.assertEqual(cfg["length"], 0)
+
+    def test_should_match_presets_when_on_and_off_shortcuts_used(self):
+        pace.run(["off"])
+        self.assertEqual(pc.load_config()[0], pace.PRESETS["off"])
+        pace.run(["ON"])
+        self.assertEqual(pc.load_config()[0], pace.PRESETS["focus"])
+
+    def test_should_print_usage_and_change_nothing_when_preset_unknown(self):
+        for args in (["preset"], ["preset", "turbo"], ["preset", "off", "now"], ["off", "now"]):
+            with self.subTest(args=args):
+                self.assertEqual(pace.run(args), pace.USAGE)
+                self.assertFalse(self.config.exists())
+
+    def test_should_list_presets_in_usage_and_command_hint(self):
+        hint = (ROOT / "commands" / "pace.md").read_text(encoding="utf-8")
+        for name in pace.PRESETS:
+            with self.subTest(preset=name):
+                self.assertIn(name, pace.USAGE)
+                self.assertIn(name, hint)
+
+
 class MainTest(PaceTestBase):
     def test_should_split_single_quoted_argument_when_called_from_command_file(self):
         out = io.StringIO()
