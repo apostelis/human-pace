@@ -13,13 +13,13 @@ Make it something a fussy developer installs and keeps.
 - Presets: `/pace preset focus|light|off`, so nobody has to learn the individual switches.
 - A silent per-person opt-out: one command, no reminders afterwards.
 
-## 0.5 Experiment
+## 0.5–0.6 Experiment (0.5.0 and 0.6.0 shipped; `/pace experimental` still open)
 
 Find out whether the formatting helps, instead of assuming it does.
 
-- Drift guard: re-send the rules every N turns, because rules sent once fade in long sessions. (done: `/pace drift-guard <n>`, default 10)
-- `/pace experimental` alternates settings week by week; `/pace report` names the better setting.
-- Bionic approaches, chosen with `/pace bionic <approach>` and compared through `/pace report` (done; see the bionic approaches spec):
+- Drift guard: re-send the rules every N turns, because rules sent once fade in long sessions. (shipped in 0.6.0: `/pace drift-guard <n>`, default 10)
+- `/pace experimental` alternates settings week by week; `/pace report` names the better setting. (open, next up)
+- Bionic approaches, chosen with `/pace bionic <approach>` and compared through `/pace report` (shipped in 0.5.0; see the bionic approaches spec):
   - `third` (today): bold the first third of each word.
   - `vowels`: bold only the vowels.
   - `consonants`: bold only the consonants.
@@ -33,7 +33,7 @@ Find out whether the formatting helps, instead of assuming it does.
   `compliance/bionic.py`. `vowels` and `consonants` bold scattered single letters, which costs more
   output tokens and may be harder for the model to follow; the compliance harness will show this.
 
-## 0.6 Team
+## 0.7 Team
 
 Roll it out without forcing it on anyone.
 
