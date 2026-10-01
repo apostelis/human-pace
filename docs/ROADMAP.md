@@ -18,7 +18,7 @@ Make it something a fussy developer installs and keeps.
 Find out whether the formatting helps, instead of assuming it does.
 
 - Drift guard: re-send the rules every N turns, because rules sent once fade in long sessions.
-- `/pace experiment` alternates settings week by week; `/pace report` names the better setting.
+- `/pace experimental` alternates settings week by week; `/pace report` names the better setting.
 - Bionic approaches, chosen with `/pace bionic <approach>` and compared through `/pace report` (done; see the bionic approaches spec):
   - `third` (today): bold the first third of each word.
   - `vowels`: bold only the vowels.
@@ -56,6 +56,6 @@ Ideas to try once 0.5 can measure whether a setting helps. Not scheduled.
     - More: Claude gives more context, so the user can actually judge what they approve.
     - Less: Claude gives less and ends on a question that a plain "yes" cannot answer, so the user
       has to commit to the session.
-  - Compare them with `/pace experiment` and the rating log; measure whether the streaks shorten.
+  - Compare them with `/pace experimental` and the rating log; measure whether the streaks shorten.
   - Open questions: how quickly to react without flip-flopping, and how to show the user what
     changed. Off by default, local only, and visible in `/pace`.

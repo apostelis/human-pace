@@ -2,7 +2,7 @@
 
 **Date:** 2026-10-01
 **Status:** Draft, awaiting review
-**Roadmap:** 0.5 Experiment, first of three items (drift guard and `/pace experiment` follow).
+**Roadmap:** 0.5 Experiment, first of three items (drift guard and `/pace experimental` follow).
 
 ## 1. Purpose
 
@@ -153,6 +153,6 @@ The usage text and the `argument-hint` in `commands/pace.md` list the approaches
 
 ## 10. Out of scope
 
-- Drift guard and `/pace experiment` (separate specs).
+- Drift guard and `/pace experimental` (separate specs).
 - Approaches other than these four.
 - Changing what counts as a prose word.
