@@ -41,3 +41,14 @@ Roll it out without forcing it on anyone.
   (§8) lists per-project config as out of scope, so this reopens that decision.
 - CI runs the compliance harness when `rules/*.md` change.
 - Spike: can `claude plugin eval` replace the homegrown harness in `compliance/`?
+
+## Experimental
+
+Ideas to try once 0.5 can measure whether a setting helps. Not scheduled.
+
+- Auto-pace: adjust the pace to the speed of the session. A `Stop` hook records when each reply
+  ends and `UserPromptSubmit` records when the next prompt arrives; the gap is roughly reading and
+  thinking time. Fast, short exchanges could loosen the rules (higher length cap, `light`), slow
+  ones tighten them (`focus`, lower cap). Open questions: which signal is honest (the gap also
+  includes time away from the keyboard), how quickly to react without flip-flopping, and how to show
+  the user what changed. Off by default, local only, and visible in `/pace`.

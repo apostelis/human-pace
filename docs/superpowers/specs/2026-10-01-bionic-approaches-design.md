@@ -20,6 +20,8 @@ compare with `/pace rate` and `/pace report`.
 - The anchor is the last consonant when the word ends in a vowel, and the second-to-last consonant
   when it ends in a consonant.
 - The user-facing term is "approach", not "strategy"; the long-word threshold is the "anchor trigger" (`anchorTrigger`, `/pace anchor-trigger`).
+- `third` rounds down from now on: `max(1, floor(letters / 3))`, so a 7-letter word gets 2 bold
+  letters, not 3. This changes today's behaviour (design spec §3 rounded up).
 
 **Success criteria**
 
@@ -31,7 +33,12 @@ compare with `/pace rate` and `/pace report`.
 ## 2. Approaches
 
 Shared definitions from the design spec §3 still hold: what a prose word is, the exclusions (code,
-paths, URLs, identifiers, headings, tables), hyphens splitting words, apostrophes inside words.
+paths, URLs, identifiers, headings, tables), hyphens splitting words, apostrophes inside words. Only
+the bold length changes, from rounding up to rounding down:
+
+| Letters | 1–5 | 6–8 | 9–11 | 12–14 |
+|---|---|---|---|---|
+| Bold (was) | 1 (1–2) | 2 (2–3) | 3 (3–4) | 4 (4–5) |
 
 - **Vowel:** a letter whose base letter, after Unicode NFD decomposition, is one of `a e i o u y`,
   in either case (`é` is a vowel). **Consonant:** any other letter. Apostrophes are neither.
@@ -40,10 +47,10 @@ paths, URLs, identifiers, headings, tables), hyphens splitting words, apostrophe
 
 | Approach | Rule | Examples |
 |---|---|---|
-| `third` | First `max(1, ceil(letters / 3))` letters. | `**unde**rstand`, `**t**he` |
+| `third` | First `max(1, floor(letters / 3))` letters. | `**und**erstand`, `**re**ading`, `**t**he` |
 | `vowels` | Every vowel. | `**u**nd**e**rst**a**nd`, `**ea**s**y**`, `rh**y**thm` |
 | `consonants` | Every consonant. | `u**nd**e**rst**a**nd**`, `ea**s**y` |
-| `third+anchor` | `third`, plus the anchor consonant in words of at least `anchorTrigger` letters. | `**unde**rsta**n**d`, `**expe**rien**c**e` |
+| `third+anchor` | `third`, plus the anchor consonant in words of at least `anchorTrigger` letters. | `**und**ersta**n**d`, `**exp**erien**c**e` |
 
 **Anchor rules (`third+anchor`)**
 
@@ -89,7 +96,10 @@ The usage text and the `argument-hint` in `commands/pace.md` list the approaches
 - `rules/bionic.md` becomes four files: `bionic-third.md`, `bionic-vowels.md`,
   `bionic-consonants.md`, `bionic-third-anchor.md`. Only the active approach's file is sent.
 - `bionic-third-anchor.md` contains `{anchorTrigger}`, replaced with `anchorTrigger`, as `{length}` is today.
-- Each fragment shows one or two worked examples, as the current rule does.
+- Each fragment shows one or two worked examples, as the current rule does. `bionic-third.md` says
+  "rounded down" and uses floor examples (`**t**he **fo**cus` becomes `**t**he **f**ocus`).
+- The README prose is bionic-formatted with the old rounding; regenerate it with `to_bionic` so it
+  matches `third`.
 - The budget test runs once per approach: every enabled fragment together stays at or under 700
   characters.
 - Changing the approach or anchor trigger changes the rules, so the existing once-per-session logic
@@ -130,6 +140,7 @@ The usage text and the `argument-hint` in `commands/pace.md` list the approaches
   restoring it, status text, usage and command hint listing every approach.
 - Inject: the right fragment per approach, `{anchorTrigger}` substituted, budget per approach, rules
   re-sent after an approach change.
+- Existing bionic tests that expect rounding up are updated to the floor table in §2.
 - Checker: hand-written examples per approach, including `y`, accented vowels, apostrophes,
   hyphens, adjacent-run merging, anchor inside or next to the prefix, words shorter than
   `anchorTrigger`.
