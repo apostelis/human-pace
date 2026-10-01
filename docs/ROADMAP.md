@@ -19,7 +19,7 @@ Find out whether the formatting helps, instead of assuming it does.
 
 - Drift guard: re-send the rules every N turns, because rules sent once fade in long sessions.
 - `/pace experiment` alternates settings week by week; `/pace report` names the better setting.
-- Bionic approaches, chosen with `/pace bionic <approach>` and compared through `/pace report`:
+- Bionic approaches, chosen with `/pace bionic <approach>` and compared through `/pace report` (done; see the bionic approaches spec):
   - `third` (today): bold the first third of each word.
   - `vowels`: bold only the vowels.
   - `consonants`: bold only the consonants.
