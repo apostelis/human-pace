@@ -15,7 +15,7 @@
 
 **Re**quires `python3` (3.9+). **Wi**thout **i**t **t**he **pl**ugin **do**es **no**thing, **a**nd **yo**ur **pr**ompts **a**re **ne**ver **bl**ocked.
 
-**Co**ntext **co**st: **un**der 200 **to**kens **o**f **ru**les, **se**nt **on**ce **p**er **se**ssion, **pl**us **ab**out 40 **f**or **t**he `/pace` **co**mmand.
+**Co**ntext **co**st: **un**der 200 **to**kens **o**f **ru**les, **se**nt **on**ce **p**er **se**ssion **a**nd **ag**ain **ev**ery 10 **pr**ompts, **pl**us **ab**out 40 **f**or **t**he `/pace` **co**mmand.
 **Wi**th `/pace off` **no**thing **i**s **se**nt.
 
 ## Use
@@ -27,6 +27,7 @@
 | `/pace bionic <approach>` | `third`, `vowels`, `consonants` or `third+anchor`; turns bionic on |
 | `/pace anchor-trigger <n>` | Word length that gets an anchor consonant in `third+anchor` (default 8) |
 | `/pace length <n>` | Prose word cap, `0` = no cap |
+| `/pace drift-guard <n>` | Resend the rules every n prompts (default 10, `0` = off) |
 | `/pace preset focus\|light\|off` | `focus`: all on · `light`: no bionic, 300 words · `off`: all off |
 | `/pace on` / `/pace off` | Same as `preset focus` / `preset off` |
 | `/pace reset` | Restore defaults |

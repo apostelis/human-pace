@@ -33,7 +33,8 @@ class PaceTestBase(unittest.TestCase):
 class ShowAndChangeTest(PaceTestBase):
     def test_should_show_defaults_when_no_config(self):
         self.assertEqual(pace.run([]),
-                         "human-pace: bionic on (third) · answerFirst on · chunks on · actionMarkers on · length 200")
+                         "human-pace: bionic on (third) · answerFirst on · chunks on · actionMarkers on · length 200"
+                         " · drift guard every 10 prompts")
 
     def test_should_persist_switch_when_toggled_off(self):
         out = pace.run(["bionic", "off"])
@@ -164,6 +165,39 @@ class ApproachTest(PaceTestBase):
             with self.subTest(word=word):
                 self.assertIn(word, pace.USAGE)
                 self.assertIn(word, hint)
+
+
+class DriftGuardTest(PaceTestBase):
+    def test_should_set_interval_and_show_it(self):
+        self.assertIn("drift guard every 25 prompts", pace.run(["drift-guard", "25"]))
+        self.assertEqual(pc.load_config()[0]["driftGuard"], 25)
+
+    def test_should_turn_off_when_zero(self):
+        self.assertIn("drift guard off", pace.run(["drift-guard", "0"]))
+        self.assertEqual(pc.load_config()[0]["driftGuard"], 0)
+
+    def test_should_print_usage_and_change_nothing_when_interval_invalid(self):
+        for args in (["drift-guard"], ["drift-guard", "101"], ["drift-guard", "x"], ["drift-guard", "5", "6"]):
+            with self.subTest(args=args):
+                self.assertEqual(pace.run(args), pace.USAGE)
+                self.assertFalse(self.config.exists())
+
+    def test_should_keep_interval_when_preset_applied_and_restore_on_reset(self):
+        pace.run(["drift-guard", "4"])
+        for name in ("off", "light", "focus"):
+            with self.subTest(preset=name):
+                pace.run(["preset", name])
+                self.assertEqual(pc.load_config()[0]["driftGuard"], 4)
+        pace.run(["reset"])
+        self.assertEqual(pc.load_config()[0]["driftGuard"], 10)
+
+    def test_should_leave_drift_guard_out_of_rating_text(self):
+        pace.run(["drift-guard", "4"])
+        self.assertNotIn("drift guard", pace.run(["rate", "3"], now=NOW))
+
+    def test_should_list_drift_guard_in_usage_and_command_hint(self):
+        self.assertIn("drift-guard", pace.USAGE)
+        self.assertIn("drift-guard", (ROOT / "commands" / "pace.md").read_text(encoding="utf-8"))
 
 
 class MainTest(PaceTestBase):
@@ -297,6 +331,11 @@ class ReportTest(PaceTestBase):
             "4.0 avg · 2 ratings · bionic off · answerFirst on · chunks on · actionMarkers on · length 200",
             "3.0 avg · 2 ratings · bionic on (vowels) · answerFirst on · chunks on · actionMarkers on · length 200",
         ])
+
+    def test_should_ignore_drift_guard_when_grouping(self):
+        self.write_log([self.entry(4, driftGuard=10), self.entry(2, driftGuard=0)])
+        self.assertEqual(pace.run(["report"]),
+                         "3.0 avg · 2 ratings · bionic on (third) · answerFirst on · chunks on · actionMarkers on · length 200")
 
     def test_should_split_groups_by_trigger_when_third_anchor(self):
         self.write_log([self.entry(4, bionicApproach="third+anchor", anchorTrigger=6),

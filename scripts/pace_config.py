@@ -11,8 +11,9 @@ SWITCHES = ("bionic", "answerFirst", "chunks", "actionMarkers")
 APPROACHES = ("third", "vowels", "consonants", "third+anchor")
 MIN_ANCHOR_TRIGGER = 2
 MAX_ANCHOR_TRIGGER = 50
+MAX_DRIFT_GUARD = 100
 DEFAULTS = {"bionic": True, "bionicApproach": "third", "anchorTrigger": 8, "answerFirst": True,
-            "chunks": True, "actionMarkers": True, "length": 200}
+            "chunks": True, "actionMarkers": True, "length": 200, "driftGuard": 10}
 
 
 def config_path() -> Path:
@@ -29,6 +30,10 @@ def defaults() -> dict:
 
 def _valid_length(value) -> bool:
     return isinstance(value, int) and not isinstance(value, bool) and value >= 0
+
+
+def valid_drift_guard(value) -> bool:
+    return isinstance(value, int) and not isinstance(value, bool) and 0 <= value <= MAX_DRIFT_GUARD
 
 
 def valid_anchor_trigger(value) -> bool:
@@ -84,6 +89,11 @@ def validate(data: dict) -> Tuple[dict, List[str]]:
             cfg["anchorTrigger"] = data["anchorTrigger"]
         else:
             invalid.append("anchorTrigger")
+    if "driftGuard" in data:
+        if valid_drift_guard(data["driftGuard"]):
+            cfg["driftGuard"] = data["driftGuard"]
+        else:
+            invalid.append("driftGuard")
     return cfg, invalid
 
 

@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Drift guard: the rules are resent every 10 prompts so they don't fade in long sessions;
+  `/pace drift-guard <n>` changes the interval, `0` turns it off. Ratings ignore it.
+
 ## 0.5.1 — 2026-10-01
 
 - Roadmap and spec: the planned `/pace experiment` command is renamed `/pace experimental`.
