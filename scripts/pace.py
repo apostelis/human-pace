@@ -13,6 +13,8 @@ import pace_config
 USAGE = """Usage:
   /pace                        show switches
   /pace <switch> on|off        switches: bionic, answerFirst, chunks, actionMarkers
+  /pace bionic <approach>      approaches: third, vowels, consonants, third+anchor
+  /pace anchor-trigger <n>     third+anchor bolds an extra consonant in words of n+ letters (2-50)
   /pace length <n>             prose word cap, 0 = no cap
   /pace preset focus|light|off focus: all on · light: no bionic, 300 words · off: all off
   /pace on | /pace off         same as preset focus | preset off
@@ -22,9 +24,10 @@ USAGE = """Usage:
 Notes cannot contain double quotes, backticks or $."""
 
 SWITCH_NAMES = {name.lower(): name for name in pace_config.SWITCHES}
+PRESET_KEYS = (*pace_config.SWITCHES, "length")
 PRESETS = {
-    "focus": pace_config.defaults(),
-    "light": {**pace_config.defaults(), "bionic": False, "length": 300},
+    "focus": {key: pace_config.DEFAULTS[key] for key in PRESET_KEYS},
+    "light": {**{key: pace_config.DEFAULTS[key] for key in PRESET_KEYS}, "bionic": False, "length": 300},
     # length 0 too: a cap alone would still send the length rule.
     "off": {**{name: False for name in pace_config.SWITCHES}, "length": 0},
 }
@@ -32,8 +35,19 @@ SHORTCUTS = {"on": "focus", "off": "off"}
 NUMBER = re.compile(r"[0-9]+")  # ASCII only: "²".isdigit() is True but int("²") raises
 
 
+def _bionic_label(cfg: dict) -> str:
+    if not cfg["bionic"]:
+        return "bionic off"
+    if cfg.get("legacyRounding"):
+        return "bionic on (third, 0.4 rounding)"
+    if cfg["bionicApproach"] == "third+anchor":
+        return f"bionic on (third+anchor, {cfg['anchorTrigger']}+ letters)"
+    return f"bionic on ({cfg['bionicApproach']})"
+
+
 def describe(cfg: dict) -> str:
-    parts = [f"{name} {'on' if cfg[name] else 'off'}" for name in pace_config.SWITCHES]
+    parts = [_bionic_label(cfg)]
+    parts += [f"{name} {'on' if cfg[name] else 'off'}" for name in pace_config.SWITCHES if name != "bionic"]
     parts.append(f"length {cfg['length'] or 'no cap'}")
     return " · ".join(parts)
 
@@ -73,6 +87,16 @@ def rate(cfg: dict, rest: List[str], now: datetime) -> str:
     return f"Logged {entry['score']}/5 for: {describe(cfg)}"
 
 
+def effective_setting(setting: dict) -> dict:
+    """Drop settings that change nothing, so they don't split report groups."""
+    effective = dict(setting)
+    if not effective["bionic"]:
+        del effective["bionicApproach"], effective["anchorTrigger"]
+    elif effective["bionicApproach"] != "third+anchor":
+        del effective["anchorTrigger"]
+    return effective
+
+
 def report() -> str:
     path = pace_config.log_path()
     try:
@@ -95,7 +119,9 @@ def report() -> str:
         setting, invalid = pace_config.validate(switches)
         if invalid:
             continue  # hand-edited into something /pace rate never writes
-        key = json.dumps(setting, sort_keys=True)
+        if setting["bionic"] and "bionicApproach" not in switches:
+            setting["legacyRounding"] = True  # rated before 0.5: third rounded up for every word length
+        key = json.dumps(effective_setting(setting), sort_keys=True)
         scores.setdefault(key, []).append(score)
         settings[key] = setting
     if not scores:
@@ -115,13 +141,20 @@ def run(args: List[str], now: Optional[datetime] = None) -> str:
     if command in SWITCH_NAMES and len(rest) == 1 and rest[0].lower() in ("on", "off"):
         cfg[SWITCH_NAMES[command]] = rest[0].lower() == "on"
         return _save(cfg)
+    if command == "bionic" and len(rest) == 1 and rest[0].lower() in pace_config.APPROACHES:
+        cfg["bionic"], cfg["bionicApproach"] = True, rest[0].lower()
+        return _save(cfg)
+    if command == "anchor-trigger" and len(rest) == 1 and NUMBER.fullmatch(rest[0]) \
+            and pace_config.valid_anchor_trigger(int(rest[0])):
+        cfg["anchorTrigger"] = int(rest[0])
+        return _save(cfg)
     if command == "length" and len(rest) == 1 and NUMBER.fullmatch(rest[0]):
         cfg["length"] = int(rest[0])
         return _save(cfg)
     if command == "preset" and len(rest) == 1 and rest[0].lower() in PRESETS:
-        return _save(dict(PRESETS[rest[0].lower()]))
+        return _save({**cfg, **PRESETS[rest[0].lower()]})
     if command in SHORTCUTS and not rest:
-        return _save(dict(PRESETS[SHORTCUTS[command]]))
+        return _save({**cfg, **PRESETS[SHORTCUTS[command]]})
     if command == "reset" and not rest:
         return _save(pace_config.defaults())
     if command == "rate":

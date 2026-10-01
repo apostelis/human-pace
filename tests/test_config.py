@@ -82,6 +82,43 @@ class LoadConfigTest(unittest.TestCase):
             self.assertEqual(pc.config_path(), self.path)
             self.assertEqual(pc.log_path(), Path(str(self.path) + ".log"))
 
+    def test_should_default_new_keys_when_config_predates_them(self):
+        self.write(json.dumps({"bionic": True, "answerFirst": True, "chunks": True,
+                               "actionMarkers": True, "length": 200}))
+        cfg, error = pc.load_config(self.path)
+        self.assertEqual(cfg["bionicApproach"], "third")
+        self.assertEqual(cfg["anchorTrigger"], 8)
+        self.assertIsNone(error)
+
+    def test_should_accept_every_approach_and_trigger_from_two(self):
+        for approach in pc.APPROACHES:
+            with self.subTest(approach=approach):
+                self.write(json.dumps({"bionicApproach": approach, "anchorTrigger": 2}))
+                self.assertEqual(pc.load_config(self.path), ({**pc.DEFAULTS, "bionicApproach": approach,
+                                                             "anchorTrigger": 2}, None))
+
+    def test_should_fall_back_and_report_when_approach_or_trigger_invalid(self):
+        for data, key in (({"bionicApproach": "Vowels"}, "bionicApproach"),
+                          ({"bionicApproach": 3}, "bionicApproach"),
+                          ({"anchorTrigger": 1}, "anchorTrigger"),
+                          ({"anchorTrigger": 51}, "anchorTrigger"),
+                          ({"anchorTrigger": True}, "anchorTrigger"),
+                          ({"anchorTrigger": "8"}, "anchorTrigger")):
+            with self.subTest(data=data):
+                self.write(json.dumps(data))
+                cfg, error = pc.load_config(self.path)
+                self.assertEqual(cfg, pc.DEFAULTS)
+                self.assertIn(key, error)
+
+    def test_should_accept_trigger_up_to_fifty(self):
+        self.write(json.dumps({"anchorTrigger": 50}))
+        self.assertEqual(pc.load_config(self.path)[0]["anchorTrigger"], 50)
+
+    def test_should_list_the_same_approaches_as_the_checker(self):
+        sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "compliance"))
+        import bionic
+        self.assertEqual(pc.APPROACHES, bionic.APPROACHES)
+
     def test_should_return_independent_copy_when_asked_for_defaults(self):
         cfg = pc.defaults()
         cfg["bionic"] = False

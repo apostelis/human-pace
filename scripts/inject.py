@@ -18,14 +18,20 @@ from typing import Mapping, Optional
 import pace_config
 
 RULES_DIR = Path(__file__).resolve().parent.parent / "rules"
-# What to say first, then shape, then how the words look.
+# What to say first, then shape, then how the words look. "bionic" picks its file by approach.
 FRAGMENTS = (
     ("answerFirst", "answer-first.md"),
     ("chunks", "chunks.md"),
     ("actionMarkers", "action-markers.md"),
     ("length", "length.md"),
-    ("bionic", "bionic.md"),
+    ("bionic", None),
 )
+BIONIC_FRAGMENTS = {
+    "third": "bionic-third.md",
+    "vowels": "bionic-vowels.md",
+    "consonants": "bionic-consonants.md",
+    "third+anchor": "bionic-third-anchor.md",
+}
 PACE_COMMAND = re.compile(r"^\s*/(human-pace:)?pace(\s|$)")
 SESSION_ID = re.compile(r"^[\w-]{1,128}$")  # also keeps the id safe to use as a file name
 STATE_MAX_AGE_SECONDS = 7 * 24 * 3600
@@ -45,9 +51,12 @@ def build_rules(cfg: dict, rules_dir: Path = RULES_DIR, config_error: Optional[s
     for key, name in FRAGMENTS:
         if not cfg.get(key):
             continue
+        if key == "bionic":
+            name = BIONIC_FRAGMENTS.get(cfg.get("bionicApproach"), BIONIC_FRAGMENTS["third"])
         text = read_fragment(rules_dir, name)
         if text:
-            parts.append(text.replace("{length}", str(cfg["length"])))
+            text = text.replace("{length}", str(cfg["length"]))
+            parts.append(text.replace("{anchorTrigger}", str(cfg.get("anchorTrigger", 8))))
     if parts:
         common = read_fragment(rules_dir, "common.md")
         if common:

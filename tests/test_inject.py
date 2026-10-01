@@ -50,8 +50,36 @@ class BuildRulesTest(unittest.TestCase):
             Path(tmp, "chunks.md").write_text("CHUNKS\n", encoding="utf-8")
             self.assertEqual(inject.build_rules(cfg(), Path(tmp)), "CHUNKS")
 
-    def test_should_stay_within_budget_when_all_defaults(self):
-        self.assertLessEqual(len(inject.build_rules(cfg())), 700)
+    def test_should_stay_within_budget_for_every_approach(self):
+        for approach in pc.APPROACHES:
+            for trigger in (pc.MIN_ANCHOR_TRIGGER, 8, pc.MAX_ANCHOR_TRIGGER):
+                with self.subTest(approach=approach, trigger=trigger):
+                    rules = inject.build_rules(cfg(bionicApproach=approach, anchorTrigger=trigger))
+                    self.assertLessEqual(len(rules), 700)
+
+    def test_should_send_only_the_active_approach_fragment(self):
+        markers = {"third": "first third", "vowels": "every vowel", "consonants": "every consonant",
+                   "third+anchor": "also bold"}
+        for approach, marker in markers.items():
+            with self.subTest(approach=approach):
+                rules = inject.build_rules(cfg(bionicApproach=approach))
+                self.assertEqual(rules.count("Bionic reading"), 1)
+                self.assertIn(marker, rules)
+                for other, other_marker in markers.items():
+                    # third+anchor's wording also says "first third"; every other pair must differ.
+                    if other != approach and (approach, other) != ("third+anchor", "third"):
+                        self.assertNotIn(other_marker, rules)
+
+    def test_should_substitute_anchor_trigger_when_third_anchor(self):
+        rules = inject.build_rules(cfg(bionicApproach="third+anchor", anchorTrigger=11))
+        self.assertIn("11+ letters", rules)
+        self.assertNotIn("{anchorTrigger}", rules)
+
+    def test_should_have_a_fragment_file_for_every_approach(self):
+        self.assertEqual(set(inject.BIONIC_FRAGMENTS), set(pc.APPROACHES))
+        for name in inject.BIONIC_FRAGMENTS.values():
+            with self.subTest(name=name):
+                self.assertTrue((inject.RULES_DIR / name).is_file())
 
 
 class ShouldSkipTest(unittest.TestCase):
@@ -175,6 +203,14 @@ class OncePerSessionTest(unittest.TestCase):
         pc.save_config({**pc.defaults(), "bionic": False, "answerFirst": False, "chunks": False,
                         "actionMarkers": False, "length": 0}, self.config)
         self.assertIsNone(self.send("SessionStart"))
+        self.assertIsNone(self.send("UserPromptSubmit"))
+
+    def test_should_resend_rules_once_when_approach_changes_mid_session(self):
+        self.send("SessionStart")
+        pc.save_config({**pc.defaults(), "bionicApproach": "vowels"}, self.config)
+        update = self.send("UserPromptSubmit")
+        self.assertTrue(update.startswith("human-pace rules changed; these replace the earlier ones."))
+        self.assertIn("every vowel", update)
         self.assertIsNone(self.send("UserPromptSubmit"))
 
     def test_should_resend_when_session_restarts_after_compaction(self):

@@ -8,7 +8,11 @@ from pathlib import Path
 from typing import List, Optional, Tuple
 
 SWITCHES = ("bionic", "answerFirst", "chunks", "actionMarkers")
-DEFAULTS = {"bionic": True, "answerFirst": True, "chunks": True, "actionMarkers": True, "length": 200}
+APPROACHES = ("third", "vowels", "consonants", "third+anchor")
+MIN_ANCHOR_TRIGGER = 2
+MAX_ANCHOR_TRIGGER = 50
+DEFAULTS = {"bionic": True, "bionicApproach": "third", "anchorTrigger": 8, "answerFirst": True,
+            "chunks": True, "actionMarkers": True, "length": 200}
 
 
 def config_path() -> Path:
@@ -25,6 +29,10 @@ def defaults() -> dict:
 
 def _valid_length(value) -> bool:
     return isinstance(value, int) and not isinstance(value, bool) and value >= 0
+
+
+def valid_anchor_trigger(value) -> bool:
+    return isinstance(value, int) and not isinstance(value, bool) and MIN_ANCHOR_TRIGGER <= value <= MAX_ANCHOR_TRIGGER
 
 
 def load_config(path: Optional[Path] = None) -> Tuple[dict, Optional[str]]:
@@ -66,6 +74,16 @@ def validate(data: dict) -> Tuple[dict, List[str]]:
             cfg["length"] = data["length"]
         else:
             invalid.append("length")
+    if "bionicApproach" in data:
+        if data["bionicApproach"] in APPROACHES:
+            cfg["bionicApproach"] = data["bionicApproach"]
+        else:
+            invalid.append("bionicApproach")
+    if "anchorTrigger" in data:
+        if valid_anchor_trigger(data["anchorTrigger"]):
+            cfg["anchorTrigger"] = data["anchorTrigger"]
+        else:
+            invalid.append("anchorTrigger")
     return cfg, invalid
 
 

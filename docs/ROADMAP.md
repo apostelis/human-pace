@@ -19,17 +19,17 @@ Find out whether the formatting helps, instead of assuming it does.
 
 - Drift guard: re-send the rules every N turns, because rules sent once fade in long sessions.
 - `/pace experiment` alternates settings week by week; `/pace report` names the better setting.
-- Bionic strategies, chosen with `/pace bionic <strategy>` and compared through `/pace report`:
+- Bionic approaches, chosen with `/pace bionic <approach>` and compared through `/pace report` (done; see the bionic approaches spec):
   - `third` (today): bold the first third of each word.
   - `vowels`: bold only the vowels.
   - `consonants`: bold only the consonants.
   - `third+anchor`: the first third, plus one consonant near the end of long words. A word is
-    long at 8 or more letters by default, configurable with `/pace anchor <n>` and stored in the
+    long at 8 or more letters by default, configurable with `/pace anchor-trigger <n>` and stored in the
     config. The anchor is the last consonant when the word ends in a vowel (`experience` → the
     `c`), and the second-to-last consonant when it ends in a consonant (`understand` → the second
     `n`).
 
-  Each strategy needs rule wording that fits the 700-character budget and a matching checker in
+  Each approach needs rule wording that fits the 700-character budget and a matching checker in
   `compliance/bionic.py`. `vowels` and `consonants` bold scattered single letters, which costs more
   output tokens and may be harder for the model to follow; the compliance harness will show this.
 
@@ -41,3 +41,21 @@ Roll it out without forcing it on anyone.
   (§8) lists per-project config as out of scope, so this reopens that decision.
 - CI runs the compliance harness when `rules/*.md` change.
 - Spike: can `claude plugin eval` replace the homegrown harness in `compliance/`?
+
+## Experimental
+
+Ideas to try once 0.5 can measure whether a setting helps. Not scheduled.
+
+- Auto-pace: adjust the pace to how the user is engaging with the session.
+  - Signals, recorded by a `Stop` hook (reply ends) and `UserPromptSubmit` (next prompt):
+    - Gap between reply and next prompt: reading and thinking time. Time away from the keyboard
+      pollutes it, so long gaps are capped or ignored.
+    - Follow-up size and kind: a streak of short approvals ("yes", "ok", "merge it") means the user
+      is relaying Claude rather than engaging with it, the meat-proxy pattern this plugin exists for.
+  - Two opposing responses to a rubber-stamp streak, to be tested against each other:
+    - More: Claude gives more context, so the user can actually judge what they approve.
+    - Less: Claude gives less and ends on a question that a plain "yes" cannot answer, so the user
+      has to commit to the session.
+  - Compare them with `/pace experiment` and the rating log; measure whether the streaks shorten.
+  - Open questions: how quickly to react without flip-flopping, and how to show the user what
+    changed. Off by default, local only, and visible in `/pace`.

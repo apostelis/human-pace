@@ -2,12 +2,13 @@
 """Send the compliance prompts through `claude -p` with this plugin and print per-rule pass rates."""
 from __future__ import annotations
 
+import argparse
 import os
 import subprocess
 import sys
 import tempfile
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent
@@ -30,19 +31,34 @@ def ask(prompt: str, env: Dict[str, str], cwd: str) -> str:
     return result.stdout
 
 
-def harness_env(tmp: str) -> Dict[str, str]:
+def parse_args(argv: List[str]) -> dict:
+    parser = argparse.ArgumentParser(description="Score real replies against the human-pace rules.")
+    parser.add_argument("--approach", choices=pace_config.APPROACHES, default="third")
+    parser.add_argument("--anchor-trigger", type=int, default=pace_config.DEFAULTS["anchorTrigger"])
+    args = parser.parse_args(argv)
+    if not pace_config.valid_anchor_trigger(args.anchor_trigger):
+        parser.error(f"--anchor-trigger must be {pace_config.MIN_ANCHOR_TRIGGER}-{pace_config.MAX_ANCHOR_TRIGGER}")
+    return {**pace_config.defaults(), "bionicApproach": args.approach, "anchorTrigger": args.anchor_trigger}
+
+
+def harness_env(tmp: str, cfg: Optional[dict] = None) -> Dict[str, str]:
     env = dict(os.environ)
     env["HUMAN_PACE"] = "1"                                    # claude -p is headless: force the plugin on
-    env["HUMAN_PACE_CONFIG"] = str(Path(tmp) / "absent.json")  # defaults, not your own switches
+    if cfg is None:
+        env["HUMAN_PACE_CONFIG"] = str(Path(tmp) / "absent.json")  # defaults, not your own switches
+    else:
+        path = Path(tmp) / "config.json"
+        pace_config.save_config(cfg, path)
+        env["HUMAN_PACE_CONFIG"] = str(path)
     return env
 
 
-def main() -> int:
-    cfg = pace_config.defaults()
+def main(argv: Optional[List[str]] = None) -> int:
+    cfg = parse_args(sys.argv[1:] if argv is None else argv)
     results: Dict[str, List[bool]] = {}
     prompts = load_prompts()
     with tempfile.TemporaryDirectory() as tmp:
-        env = harness_env(tmp)
+        env = harness_env(tmp, cfg)
         for n, prompt in enumerate(prompts, 1):
             print(f"[{n}/{len(prompts)}] {prompt[:70]}", file=sys.stderr)
             scores = score_reply(ask(prompt, env, tmp), cfg)

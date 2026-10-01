@@ -58,8 +58,8 @@ def action_line_last(reply: str) -> bool:
     return not marked or all(MARKER in line for line in lines[marked[0]:])
 
 
-def bionic_ok(reply: str) -> bool:
-    correct, total = score_bionic(reply)
+def bionic_ok(reply: str, approach: str = "third", anchor_trigger: int = 8) -> bool:
+    correct, total = score_bionic(reply, approach, anchor_trigger)
     return total == 0 or correct / total >= BIONIC_THRESHOLD
 
 
@@ -74,6 +74,6 @@ def score_reply(reply: str, cfg: dict) -> Dict[str, bool]:
     if cfg.get("actionMarkers"):
         results["action line last"] = action_line_last(reply)
     if cfg.get("bionic"):
-        results["bionic >= 90%"] = bionic_ok(reply)
+        results["bionic >= 90%"] = bionic_ok(reply, cfg.get("bionicApproach", "third"), cfg.get("anchorTrigger", 8))
         results["no bold in code"] = not bold_in_code(reply)
     return results
