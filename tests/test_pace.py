@@ -137,7 +137,7 @@ class ApproachTest(PaceTestBase):
         self.assertEqual((cfg["bionicApproach"], cfg["anchorTrigger"]), ("vowels", 5))
 
     def test_should_print_usage_and_change_nothing_when_approach_or_trigger_invalid(self):
-        for args in (["bionic", "bold"], ["anchor-trigger"], ["anchor-trigger", "1"],
+        for args in (["bionic", "bold"], ["anchor-trigger"], ["anchor-trigger", "1"], ["anchor-trigger", "51"],
                      ["anchor-trigger", "x"], ["anchor-trigger", "8", "9"], ["bionic", "vowels", "now"]):
             with self.subTest(args=args):
                 self.assertEqual(pace.run(args), pace.USAGE)

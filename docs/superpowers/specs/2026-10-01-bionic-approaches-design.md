@@ -42,7 +42,8 @@ the bold length changes: `ceil(letters / 3)` up to 5 letters, `floor(letters / 3
 | Bold (was) | 1 (1) | 2 (2) | 2 (2–3) | 3 (3–4) | 4 (4–5) |
 
 - **Vowel:** a letter whose base letter, after Unicode NFD decomposition, is one of `a e i o u y`,
-  in either case (`é` is a vowel). **Consonant:** any other letter. Apostrophes are neither.
+  in either case (`é` is a vowel), plus the ligatures `æ` and `œ`, which NFD does not decompose.
+  **Consonant:** any other letter. Apostrophes are neither.
 - **Runs:** adjacent bold letters form one bold span, so markdown never contains `****`.
   `easy` → `**ea**s**y**`, not `**e****a**sy`. An apostrophe ends a run.
 
@@ -59,7 +60,9 @@ the bold length changes: `ceil(letters / 3)` up to 5 letters, `floor(letters / 3
   `everybody` → `d`.
 - Word ends in a consonant: the anchor is the second-to-last consonant. `understand` → the second `n`.
 - If the anchor is inside the bold prefix, or the word has no such consonant, the word is bolded as
-  `third`. If the anchor directly follows the prefix, the two merge into one span.
+  `third`. If the anchor directly follows the prefix, it is skipped (no merged span), and the word
+  is also bolded as `third`. The rule text leaves this out: at 700 characters there is no room, and
+  it affects about 13 in 161k dictionary words at the default trigger.
 - Shorter words are bolded as `third`.
 
 ## 3. Config
@@ -75,7 +78,7 @@ Two new keys, beside the existing ones:
   break existing config files and every logged rating.
 - `bionicApproach`: one of the four names. Missing → `third`. Anything else → `third`, reported as
   an invalid value like the other keys.
-- `anchorTrigger`: integer, at least 2. Missing → 8. Invalid → 8, reported.
+- `anchorTrigger`: integer from 2 to 50. Missing → 8. Invalid → 8, reported.
 - Presets (`focus`, `light`, `off`, and the `on`/`off` shortcuts) change only the switches and
   `length`; they keep the user's approach and anchor trigger. `/pace reset` restores everything,
   including `third` and 8.
@@ -86,7 +89,7 @@ Two new keys, beside the existing ones:
 |---|---|
 | `/pace bionic on\|off` | Unchanged. |
 | `/pace bionic <approach>` | Sets the approach and turns `bionic` on. Case-insensitive. |
-| `/pace anchor-trigger <n>` | Sets `anchorTrigger`, `n` ≥ 2. Does not change the approach. |
+| `/pace anchor-trigger <n>` | Sets `anchorTrigger`, 2 ≤ `n` ≤ 50. Does not change the approach. |
 
 Status output shows the approach next to the switch, and the anchor trigger only where it applies:
 `bionic on (third)`, `bionic on (vowels)`, `bionic on (third+anchor, 8+ letters)`, `bionic off`.

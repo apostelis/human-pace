@@ -21,7 +21,7 @@ def bold_length(word: str) -> int:
 
 
 APPROACHES = ("third", "vowels", "consonants", "third+anchor")
-VOWELS = frozenset("aeiouy")
+VOWELS = frozenset("aeiouyæœ")  # æ and œ do not decompose under NFD
 
 
 def is_vowel(c: str) -> bool:
@@ -70,8 +70,9 @@ def anchor_word(word: str, anchor_trigger: int = 8) -> str:
     if len(letters) >= anchor_trigger:
         consonants = [i for i in letters if not is_vowel(word[i])]
         nth_from_end = 1 if is_vowel(word[letters[-1]]) else 2
-        if len(consonants) >= nth_from_end:
-            marks[consonants[-nth_from_end]] = True
+        prefix_end = max(i for i, marked in enumerate(marks) if marked)
+        if len(consonants) >= nth_from_end and consonants[-nth_from_end] != prefix_end + 1:
+            marks[consonants[-nth_from_end]] = True  # skipped right after the prefix: no merged span
     return _render(word, marks)
 
 

@@ -10,6 +10,7 @@ from typing import List, Optional, Tuple
 SWITCHES = ("bionic", "answerFirst", "chunks", "actionMarkers")
 APPROACHES = ("third", "vowels", "consonants", "third+anchor")
 MIN_ANCHOR_TRIGGER = 2
+MAX_ANCHOR_TRIGGER = 50
 DEFAULTS = {"bionic": True, "bionicApproach": "third", "anchorTrigger": 8, "answerFirst": True,
             "chunks": True, "actionMarkers": True, "length": 200}
 
@@ -31,7 +32,7 @@ def _valid_length(value) -> bool:
 
 
 def valid_anchor_trigger(value) -> bool:
-    return isinstance(value, int) and not isinstance(value, bool) and value >= MIN_ANCHOR_TRIGGER
+    return isinstance(value, int) and not isinstance(value, bool) and MIN_ANCHOR_TRIGGER <= value <= MAX_ANCHOR_TRIGGER
 
 
 def load_config(path: Optional[Path] = None) -> Tuple[dict, Optional[str]]:

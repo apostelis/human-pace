@@ -14,7 +14,7 @@ USAGE = """Usage:
   /pace                        show switches
   /pace <switch> on|off        switches: bionic, answerFirst, chunks, actionMarkers
   /pace bionic <approach>      approaches: third, vowels, consonants, third+anchor
-  /pace anchor-trigger <n>     third+anchor bolds an extra consonant in words of n+ letters (n >= 2)
+  /pace anchor-trigger <n>     third+anchor bolds an extra consonant in words of n+ letters (2-50)
   /pace length <n>             prose word cap, 0 = no cap
   /pace preset focus|light|off focus: all on · light: no bionic, 300 words · off: all off
   /pace on | /pace off         same as preset focus | preset off

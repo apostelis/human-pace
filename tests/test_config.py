@@ -101,6 +101,7 @@ class LoadConfigTest(unittest.TestCase):
         for data, key in (({"bionicApproach": "Vowels"}, "bionicApproach"),
                           ({"bionicApproach": 3}, "bionicApproach"),
                           ({"anchorTrigger": 1}, "anchorTrigger"),
+                          ({"anchorTrigger": 51}, "anchorTrigger"),
                           ({"anchorTrigger": True}, "anchorTrigger"),
                           ({"anchorTrigger": "8"}, "anchorTrigger")):
             with self.subTest(data=data):
@@ -108,6 +109,10 @@ class LoadConfigTest(unittest.TestCase):
                 cfg, error = pc.load_config(self.path)
                 self.assertEqual(cfg, pc.DEFAULTS)
                 self.assertIn(key, error)
+
+    def test_should_accept_trigger_up_to_fifty(self):
+        self.write(json.dumps({"anchorTrigger": 50}))
+        self.assertEqual(pc.load_config(self.path)[0]["anchorTrigger"], 50)
 
     def test_should_list_the_same_approaches_as_the_checker(self):
         sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "compliance"))

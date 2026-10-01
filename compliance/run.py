@@ -37,7 +37,7 @@ def parse_args(argv: List[str]) -> dict:
     parser.add_argument("--anchor-trigger", type=int, default=pace_config.DEFAULTS["anchorTrigger"])
     args = parser.parse_args(argv)
     if not pace_config.valid_anchor_trigger(args.anchor_trigger):
-        parser.error(f"--anchor-trigger must be at least {pace_config.MIN_ANCHOR_TRIGGER}")
+        parser.error(f"--anchor-trigger must be {pace_config.MIN_ANCHOR_TRIGGER}-{pace_config.MAX_ANCHOR_TRIGGER}")
     return {**pace_config.defaults(), "bionicApproach": args.approach, "anchorTrigger": args.anchor_trigger}
 
 

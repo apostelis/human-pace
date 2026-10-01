@@ -52,7 +52,7 @@ class BuildRulesTest(unittest.TestCase):
 
     def test_should_stay_within_budget_for_every_approach(self):
         for approach in pc.APPROACHES:
-            for trigger in (8, 99):
+            for trigger in (pc.MIN_ANCHOR_TRIGGER, 8, pc.MAX_ANCHOR_TRIGGER):
                 with self.subTest(approach=approach, trigger=trigger):
                     rules = inject.build_rules(cfg(bionicApproach=approach, anchorTrigger=trigger))
                     self.assertLessEqual(len(rules), 700)

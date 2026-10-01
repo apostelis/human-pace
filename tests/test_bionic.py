@@ -31,7 +31,7 @@ class BionicWordTest(unittest.TestCase):
 
 class VowelTest(unittest.TestCase):
     def test_should_count_y_and_accented_and_upper_case_vowels(self):
-        for c in "aeiouyAEIOUYéÉÿ":
+        for c in "aeiouyAEIOUYéÉÿæœÆŒ":
             with self.subTest(c=c):
                 self.assertTrue(bionic.is_vowel(c))
         for c in "bcdzBZçñ'":
@@ -62,6 +62,12 @@ class ApproachWordTest(unittest.TestCase):
                     self.assertNotIn("****", fn(word))
 
 
+class LigatureTest(unittest.TestCase):
+    def test_should_treat_ligatures_as_vowels(self):
+        self.assertEqual(bionic.vowels_word("Æsop"), "**Æ**s**o**p")
+        self.assertEqual(bionic.consonants_word("œuvre"), "œu**vr**e")
+
+
 class AnchorWordTest(unittest.TestCase):
     def test_should_bold_last_consonant_when_long_word_ends_in_vowel(self):
         self.assertEqual(bionic.anchor_word("experience"), "**exp**erien**c**e")
@@ -74,15 +80,13 @@ class AnchorWordTest(unittest.TestCase):
         self.assertEqual(bionic.anchor_word("reading"), "**re**ading")
         self.assertEqual(bionic.anchor_word("reading", 7), "**re**adi**n**g")
 
-    def test_should_merge_when_anchor_follows_prefix(self):
-        # "planter": 7 letters, trigger 7, prefix "pl", ends in r -> second-to-last consonant is t.
+    def test_should_skip_anchor_right_after_prefix(self):
+        # "planter": 7 letters, trigger 7, prefix "pl", ends in r -> t, not next to the prefix.
         self.assertEqual(bionic.anchor_word("planter", 7), "**pl**an**t**er")
-        # "abbey": 5 letters, trigger 2, prefix "ab", ends in y (vowel) -> last consonant is the 2nd b,
-        # right after the prefix: one span.
-        self.assertEqual(bionic.anchor_word("abbey", 2), "**abb**ey")
-        # "ebb": 3 letters, trigger 2, prefix "e", ends in b -> second-to-last consonant is the 1st b,
-        # right after the prefix: one span.
-        self.assertEqual(bionic.anchor_word("ebb", 2), "**eb**b")
+        # "abbey": prefix "ab", ends in y (vowel) -> last consonant is the 2nd b, right after the prefix.
+        self.assertEqual(bionic.anchor_word("abbey", 2), "**ab**bey")
+        # "ebb": prefix "e", ends in b -> second-to-last consonant is the 1st b, right after the prefix.
+        self.assertEqual(bionic.anchor_word("ebb", 2), "**e**bb")
 
     def test_should_bold_as_third_when_anchor_inside_prefix_or_missing(self):
         # "queue": prefix "qu", ends in a vowel -> last consonant is q, already bold.
@@ -151,6 +155,11 @@ class RuleExamplesTest(unittest.TestCase):
             for example in examples:
                 with self.subTest(approach=approach, example=example):
                     self.assertEqual(bionic.word_function(approach)(example.replace("**", "")), example)
+
+    def test_should_say_accented_vowels_are_vowels_in_letter_rules(self):
+        for approach in ("vowels", "consonants"):
+            with self.subTest(approach=approach):
+                self.assertIn("accented", self.rule(approach))
 
     def test_should_show_anchor_that_differs_from_the_letter_before_the_last_consonant(self):
         # In "understand" the letter before the last consonant and the anchor are both "n".

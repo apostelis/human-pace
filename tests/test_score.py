@@ -105,6 +105,10 @@ class HarnessArgsTest(unittest.TestCase):
         cfg = run.parse_args(["--approach", "third+anchor", "--anchor-trigger", "6"])
         self.assertEqual((cfg["bionicApproach"], cfg["anchorTrigger"]), ("third+anchor", 6))
 
+    def test_should_exit_when_trigger_above_fifty(self):
+        with self.assertRaises(SystemExit), contextlib.redirect_stderr(io.StringIO()):
+            run.parse_args(["--anchor-trigger", "51"])
+
     def test_should_exit_when_approach_unknown(self):
         with self.assertRaises(SystemExit), contextlib.redirect_stderr(io.StringIO()):
             run.parse_args(["--approach", "bold"])
