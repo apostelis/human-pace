@@ -114,6 +114,21 @@ class LoadConfigTest(unittest.TestCase):
         self.write(json.dumps({"anchorTrigger": 50}))
         self.assertEqual(pc.load_config(self.path)[0]["anchorTrigger"], 50)
 
+    def test_should_accept_drift_guard_from_zero_to_hundred(self):
+        self.assertEqual(pc.DEFAULTS["driftGuard"], 10)
+        for value in (0, 100):
+            with self.subTest(value=value):
+                self.write(json.dumps({"driftGuard": value}))
+                self.assertEqual(pc.load_config(self.path), ({**pc.DEFAULTS, "driftGuard": value}, None))
+
+    def test_should_fall_back_and_report_when_drift_guard_invalid(self):
+        for bad in (-1, 101, True, "10", 2.5):
+            with self.subTest(bad=bad):
+                self.write(json.dumps({"driftGuard": bad}))
+                cfg, error = pc.load_config(self.path)
+                self.assertEqual(cfg["driftGuard"], 10)
+                self.assertIn("driftGuard", error)
+
     def test_should_list_the_same_approaches_as_the_checker(self):
         sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "compliance"))
         import bionic

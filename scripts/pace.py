@@ -16,6 +16,7 @@ USAGE = """Usage:
   /pace bionic <approach>      approaches: third, vowels, consonants, third+anchor
   /pace anchor-trigger <n>     third+anchor bolds an extra consonant in words of n+ letters (2-50)
   /pace length <n>             prose word cap, 0 = no cap
+  /pace drift-guard <n>        resend the rules every n prompts, 0 = off (max 100)
   /pace preset focus|light|off focus: all on · light: no bionic, 300 words · off: all off
   /pace on | /pace off         same as preset focus | preset off
   /pace reset                  restore defaults
@@ -52,12 +53,18 @@ def describe(cfg: dict) -> str:
     return " · ".join(parts)
 
 
+def status(cfg: dict) -> str:
+    """describe() plus settings that change delivery, not formatting (kept out of ratings)."""
+    guard = f"every {cfg['driftGuard']} prompts" if cfg["driftGuard"] else "off"
+    return f"{describe(cfg)} · drift guard {guard}"
+
+
 def _save(cfg: dict) -> str:
     try:
         pace_config.save_config(cfg)
     except OSError as e:
         return f"Could not save {pace_config.config_path()}: {e.strerror}"
-    return f"human-pace: {describe(cfg)}\nApplies from your next prompt."
+    return f"human-pace: {status(cfg)}\nApplies from your next prompt."
 
 
 def _ends_with_newline(path) -> bool:
@@ -90,6 +97,7 @@ def rate(cfg: dict, rest: List[str], now: datetime) -> str:
 def effective_setting(setting: dict) -> dict:
     """Drop settings that change nothing, so they don't split report groups."""
     effective = dict(setting)
+    del effective["driftGuard"]  # changes delivery, not formatting
     if not effective["bionic"]:
         del effective["bionicApproach"], effective["anchorTrigger"]
     elif effective["bionicApproach"] != "third+anchor":
@@ -136,7 +144,7 @@ def run(args: List[str], now: Optional[datetime] = None) -> str:
     cfg, error = pace_config.load_config()
     if not args:
         warning = f"\n(Config was invalid: {error}. Showing defaults; any change rewrites it.)" if error else ""
-        return f"human-pace: {describe(cfg)}{warning}"
+        return f"human-pace: {status(cfg)}{warning}"
     command, rest = args[0].lower(), args[1:]
     if command in SWITCH_NAMES and len(rest) == 1 and rest[0].lower() in ("on", "off"):
         cfg[SWITCH_NAMES[command]] = rest[0].lower() == "on"
@@ -147,6 +155,10 @@ def run(args: List[str], now: Optional[datetime] = None) -> str:
     if command == "anchor-trigger" and len(rest) == 1 and NUMBER.fullmatch(rest[0]) \
             and pace_config.valid_anchor_trigger(int(rest[0])):
         cfg["anchorTrigger"] = int(rest[0])
+        return _save(cfg)
+    if command == "drift-guard" and len(rest) == 1 and NUMBER.fullmatch(rest[0]) \
+            and pace_config.valid_drift_guard(int(rest[0])):
+        cfg["driftGuard"] = int(rest[0])
         return _save(cfg)
     if command == "length" and len(rest) == 1 and NUMBER.fullmatch(rest[0]):
         cfg["length"] = int(rest[0])

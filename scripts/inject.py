@@ -13,7 +13,7 @@ import re
 import sys
 import time
 from pathlib import Path
-from typing import Mapping, Optional
+from typing import Mapping, Optional, Tuple
 
 import pace_config
 
@@ -37,6 +37,7 @@ SESSION_ID = re.compile(r"^[\w-]{1,128}$")  # also keeps the id safe to use as a
 STATE_MAX_AGE_SECONDS = 7 * 24 * 3600
 UPDATED_PREFIX = "human-pace rules changed; these replace the earlier ones.\n"
 OFF_NOTICE = "human-pace is now off: ignore its earlier formatting rules."
+REMINDER_PREFIX = "human-pace rules still in effect:\n"
 
 
 def read_fragment(rules_dir: Path, name: str) -> Optional[str]:
@@ -84,17 +85,23 @@ def state_dir() -> Path:
     return Path(os.environ.get("HUMAN_PACE_STATE", "~/.claude/human-pace-state")).expanduser()
 
 
-def _last_sent(session_id: str) -> Optional[str]:
+def _last_sent(session_id: str) -> Optional[Tuple[str, int]]:
+    """Return (digest of the rules last sent, prompts since then), or None without state."""
     try:
-        return (state_dir() / session_id).read_text(encoding="utf-8")
+        lines = (state_dir() / session_id).read_text(encoding="utf-8").splitlines()
     except (OSError, ValueError):
         return None
+    if not lines:
+        return None
+    count = lines[1] if len(lines) > 1 else ""
+    # 0.5 files hold only the digest; ASCII digits only, since int("²") raises.
+    return lines[0], int(count) if re.fullmatch(r"[0-9]+", count) else 0
 
 
-def _remember(session_id: str, digest: str) -> None:
+def _remember(session_id: str, digest: str, count: int = 0) -> None:
     try:
         state_dir().mkdir(parents=True, exist_ok=True)
-        (state_dir() / session_id).write_text(digest, encoding="utf-8")
+        (state_dir() / session_id).write_text(f"{digest}\n{count}", encoding="utf-8")
     except OSError:
         pass  # Without state every prompt re-sends the rules, which is the safe direction.
 
@@ -109,8 +116,8 @@ def _prune_state() -> None:
         pass
 
 
-def rules_to_send(event: str, rules: str, session_id: object) -> str:
-    """Send the rules at session start, and again on a prompt only when they changed."""
+def rules_to_send(event: str, rules: str, session_id: object, drift_guard: int = 0) -> str:
+    """Send the rules at session start, again when they change, and every drift_guard prompts."""
     if not isinstance(session_id, str) or not SESSION_ID.match(session_id):
         return rules  # Can't track this session: fall back to every prompt.
     digest = hashlib.sha256(rules.encode("utf-8")).hexdigest()
@@ -118,8 +125,14 @@ def rules_to_send(event: str, rules: str, session_id: object) -> str:
         _prune_state()
         _remember(session_id, digest)
         return rules
-    previous = _last_sent(session_id)
+    last = _last_sent(session_id)
+    previous, count = last if last else (None, 0)
     if previous == digest:
+        count += 1
+        if drift_guard and rules and count >= drift_guard:
+            _remember(session_id, digest)
+            return REMINDER_PREFIX + rules  # rules sent once fade over a long session
+        _remember(session_id, digest, count)
         return ""
     _remember(session_id, digest)
     if previous is None:
@@ -139,7 +152,8 @@ def main(stdin=sys.stdin, stdout=sys.stdout, env: Mapping[str, str] = os.environ
             return 0
         event = "SessionStart" if hook_input.get("hook_event_name") == "SessionStart" else "UserPromptSubmit"
         cfg, error = pace_config.load_config()
-        text = rules_to_send(event, build_rules(cfg, config_error=error), hook_input.get("session_id"))
+        text = rules_to_send(event, build_rules(cfg, config_error=error), hook_input.get("session_id"),
+                             cfg["driftGuard"])
         if text:
             stdout.write(hook_output(text, event))
     except Exception:

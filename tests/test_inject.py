@@ -213,6 +213,62 @@ class OncePerSessionTest(unittest.TestCase):
         self.assertIn("every vowel", update)
         self.assertIsNone(self.send("UserPromptSubmit"))
 
+    def test_should_remind_once_every_drift_guard_prompts(self):
+        pc.save_config({**pc.defaults(), "driftGuard": 3}, self.config)
+        self.send("SessionStart")
+        self.assertIsNone(self.send("UserPromptSubmit"))
+        self.assertIsNone(self.send("UserPromptSubmit"))
+        reminder = self.send("UserPromptSubmit")
+        self.assertTrue(reminder.startswith(inject.REMINDER_PREFIX))
+        self.assertIn("Bionic reading", reminder)
+        self.assertIsNone(self.send("UserPromptSubmit"))
+        self.assertIsNone(self.send("UserPromptSubmit"))
+        self.assertTrue(self.send("UserPromptSubmit").startswith(inject.REMINDER_PREFIX))
+
+    def test_should_remind_after_ten_prompts_by_default(self):
+        self.send("SessionStart")
+        replies = [self.send("UserPromptSubmit") for _ in range(10)]
+        self.assertEqual(replies[:9], [None] * 9)
+        self.assertTrue(replies[9].startswith(inject.REMINDER_PREFIX))
+
+    def test_should_never_remind_when_drift_guard_off(self):
+        pc.save_config({**pc.defaults(), "driftGuard": 0}, self.config)
+        self.send("SessionStart")
+        self.assertEqual([self.send("UserPromptSubmit") for _ in range(25)], [None] * 25)
+
+    def test_should_not_remind_when_everything_off(self):
+        pc.save_config({**pc.defaults(), "bionic": False, "answerFirst": False, "chunks": False,
+                        "actionMarkers": False, "length": 0, "driftGuard": 2}, self.config)
+        self.send("SessionStart")
+        self.assertEqual([self.send("UserPromptSubmit") for _ in range(5)], [None] * 5)
+
+    def test_should_restart_count_when_rules_change(self):
+        pc.save_config({**pc.defaults(), "driftGuard": 3}, self.config)
+        self.send("SessionStart")
+        self.send("UserPromptSubmit")
+        self.send("UserPromptSubmit")
+        pc.save_config({**pc.defaults(), "driftGuard": 3, "bionic": False}, self.config)
+        self.assertTrue(self.send("UserPromptSubmit").startswith("human-pace rules changed"))
+        self.assertIsNone(self.send("UserPromptSubmit"))
+        self.assertIsNone(self.send("UserPromptSubmit"))
+        self.assertTrue(self.send("UserPromptSubmit").startswith(inject.REMINDER_PREFIX))
+
+    def test_should_count_from_zero_when_state_file_predates_drift_guard(self):
+        pc.save_config({**pc.defaults(), "driftGuard": 2}, self.config)
+        self.send("SessionStart")
+        digest = (self.state / "s1").read_text(encoding="utf-8").splitlines()[0]
+        (self.state / "s1").write_text(digest, encoding="utf-8")  # 0.5 format: digest only
+        self.assertIsNone(self.send("UserPromptSubmit"))
+        self.assertTrue(self.send("UserPromptSubmit").startswith(inject.REMINDER_PREFIX))
+
+    def test_should_count_from_zero_when_state_count_is_corrupt(self):
+        pc.save_config({**pc.defaults(), "driftGuard": 2}, self.config)
+        self.send("SessionStart")
+        digest = (self.state / "s1").read_text(encoding="utf-8").splitlines()[0]
+        (self.state / "s1").write_text(f"{digest}\n²", encoding="utf-8")
+        self.assertIsNone(self.send("UserPromptSubmit"))
+        self.assertTrue(self.send("UserPromptSubmit").startswith(inject.REMINDER_PREFIX))
+
     def test_should_resend_when_session_restarts_after_compaction(self):
         self.send("SessionStart")
         self.assertIn("Bionic reading", self.send("SessionStart"))
