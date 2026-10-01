@@ -17,7 +17,7 @@ Make it something a fussy developer installs and keeps.
 
 Find out whether the formatting helps, instead of assuming it does.
 
-- Drift guard: re-send the rules every N turns, because rules sent once fade in long sessions.
+- Drift guard: re-send the rules every N turns, because rules sent once fade in long sessions. (done: `/pace drift-guard <n>`, default 10)
 - `/pace experimental` alternates settings week by week; `/pace report` names the better setting.
 - Bionic approaches, chosen with `/pace bionic <approach>` and compared through `/pace report` (done; see the bionic approaches spec):
   - `third` (today): bold the first third of each word.
