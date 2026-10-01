@@ -1,7 +1,6 @@
 """Reference bionic algorithm (spec §3), shared by the tests and the compliance harness."""
 from __future__ import annotations
 
-import math
 import re
 from typing import Tuple
 
@@ -16,7 +15,7 @@ SEPARATORS = re.compile(r"[\s\-–—]+")                     # whitespace and h
 
 def bold_length(word: str) -> int:
     letters = sum(1 for c in word if c.isalpha())
-    return max(1, math.ceil(letters / 3))
+    return max(1, letters // 3)
 
 
 def bionic_word(word: str) -> str:
