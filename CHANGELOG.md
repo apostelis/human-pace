@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.7.1 — 2026-10-02
 
 - Add opt-in experimental bionic gradients (`color`, `weight`, `both`) for HTML/CSS reply surfaces, with Markdown fallback.
 
