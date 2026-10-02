@@ -1,0 +1,10 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "human-pace",
+  "version": "0.7.0",
+  "description": "Human-paced replies with configurable bionic reading, answer first, short chunks, action markers and a length cap.",
+  "author": { "name": "a.palogos" },
+  "homepage": "https://github.com/apostelis/human-pace",
+  "repository": "https://github.com/apostelis/human-pace",
+  "license": "MIT"
+}

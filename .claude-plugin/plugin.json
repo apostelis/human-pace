@@ -1,6 +1,6 @@
 {
   "name": "human-pace",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "Human-paced replies: bionic reading, answer first, short chunks, action markers and a length cap, each toggleable with /pace.",
   "author": { "name": "a.palogos" },
   "homepage": "https://github.com/apostelis/human-pace",

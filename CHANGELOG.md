@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.7.0 — 2026-10-02
+
+- Add a portable plugin and self-contained human-pace skill for ChatGPT Work and Codex.
+- Add copyable custom instructions for ChatGPT, generated from the shared formatting rules.
+- Document installation and chat-local switches; persistent ratings and automatic reminders remain Claude-only.
+- Check generated OpenAI resources for drift in CI.
+
 ## 0.6.0 — 2026-10-01
 
 - Drift guard: the rules are resent every 10 prompts so they don't fade in long sessions;
