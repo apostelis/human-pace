@@ -16,7 +16,7 @@ SEPARATORS = re.compile(r"[\s\-–—]+")                     # whitespace and h
 
 def bold_length(word: str) -> int:
     letters = sum(1 for c in word if c.isalpha())
-    third = -(-letters // 3) if letters <= 5 else letters // 3  # short words round up, longer ones down
+    third = -(-letters // 3)  # ceil(letters / 3)
     return max(1, third)
 
 
