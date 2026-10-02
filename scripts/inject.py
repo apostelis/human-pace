@@ -58,6 +58,10 @@ def build_rules(cfg: dict, rules_dir: Path = RULES_DIR, config_error: Optional[s
         if text:
             text = text.replace("{length}", str(cfg["length"]))
             parts.append(text.replace("{anchorTrigger}", str(cfg.get("anchorTrigger", 8))))
+    if cfg.get("bionic") and cfg.get("bionicGradient", "off") != "off":
+        gradient = read_fragment(rules_dir, "experimental-gradient.md")
+        if gradient:
+            parts.append(gradient.replace("{gradient}", cfg["bionicGradient"]))
     if parts:
         common = read_fragment(rules_dir, "common.md")
         if common:

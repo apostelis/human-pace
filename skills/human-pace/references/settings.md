@@ -58,3 +58,7 @@ Bionic reading: bold every consonant (any letter but a e i o u y, accented or no
 ## Bionic third+anchor
 
 Bionic reading: bold the first third of each prose word (round up to 5 letters, down above). At {anchorTrigger}+ letters also bold the last consonant if it ends in a vowel (y counts), else the one before: **inf**orma**t**ion **exp**erien**c**e. Headings, tables, numbers plain. No other bold.
+
+## Experimental gradients
+
+Experimental bionic gradient: {gradient}. Only in an available HTML/CSS reply surface; otherwise use the selected Markdown bionic approach. Never emit raw HTML into ordinary chat or create a file just to apply this setting. Color: a contrasting purple-to-blue gradient clipped to the marked letters. Weight: a variable font with per-letter weights decreasing from 800 to 400 across each word. Both: combine weight with color fading toward normal text. Keep unmarked letters normal in color mode; preserve common exclusions. Use theme-aware colors and a normal-text fallback if the font or styling is unavailable.

@@ -9,10 +9,11 @@ from typing import List, Optional, Tuple
 
 SWITCHES = ("bionic", "answerFirst", "chunks", "actionMarkers")
 APPROACHES = ("third", "vowels", "consonants", "third+anchor")
+GRADIENTS = ("off", "color", "weight", "both")
 MIN_ANCHOR_TRIGGER = 2
 MAX_ANCHOR_TRIGGER = 50
 MAX_DRIFT_GUARD = 100
-DEFAULTS = {"bionic": True, "bionicApproach": "third", "anchorTrigger": 8, "answerFirst": True,
+DEFAULTS = {"bionic": True, "bionicApproach": "third", "bionicGradient": "off", "anchorTrigger": 8, "answerFirst": True,
             "chunks": True, "actionMarkers": True, "length": 200, "driftGuard": 10}
 
 
@@ -84,6 +85,11 @@ def validate(data: dict) -> Tuple[dict, List[str]]:
             cfg["bionicApproach"] = data["bionicApproach"]
         else:
             invalid.append("bionicApproach")
+    if "bionicGradient" in data:
+        if data["bionicGradient"] in GRADIENTS:
+            cfg["bionicGradient"] = data["bionicGradient"]
+        else:
+            invalid.append("bionicGradient")
     if "anchorTrigger" in data:
         if valid_anchor_trigger(data["anchorTrigger"]):
             cfg["anchorTrigger"] = data["anchorTrigger"]
