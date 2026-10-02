@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Add opt-in experimental bionic gradients (`color`, `weight`, `both`) for HTML/CSS reply surfaces, with Markdown fallback.
+
 ## 0.7.0 — 2026-10-02
 
 - Add a portable plugin and self-contained human-pace skill for ChatGPT Work and Codex.

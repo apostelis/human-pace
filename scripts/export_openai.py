@@ -33,7 +33,9 @@ def exports() -> dict:
             sections.append(f"## {key}\n\n{inject.read_fragment(inject.RULES_DIR, filename)}\n")
     for approach, filename in inject.BIONIC_FRAGMENTS.items():
         sections.append(f"## Bionic {approach}\n\n{inject.read_fragment(inject.RULES_DIR, filename)}\n")
+    sections.append("## Experimental gradients\n\n" + inject.read_fragment(inject.RULES_DIR, "experimental-gradient.md") + "\n")
     return {
+        ROOT / "skills/human-pace/scripts/render_gradient.py": (ROOT / "scripts/render_gradient.py").read_text(encoding="utf-8"),
         ROOT / "integrations/chatgpt/custom-instructions.txt": instructions,
         ROOT / "skills/human-pace/references/settings.md": "\n".join(sections),
     }

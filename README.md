@@ -96,6 +96,36 @@ See OpenAI's [plugin packaging guide](https://developers.openai.com/plugins/buil
 **He**adless **ru**ns (`claude -p`, **t**he **Ag**ent **S**DK) **a**re **sk**ipped, **s**o **sc**ripts **a**nd **C**I **g**et **pl**ain **ou**tput.
 **S**et `HUMAN_PACE=1` **t**o **fo**rce **t**he **ru**les **o**n **th**ere, **o**r `HUMAN_PACE=0` **t**o **tu**rn **th**em **o**ff **eve**rywhere.
 
+## Experimental gradients
+
+For special cases in HTML/CSS-capable reply surfaces, opt in with:
+
+```text
+/pace experimental gradient color
+/pace experimental gradient weight
+/pace experimental gradient both
+/pace experimental gradient off
+```
+
+`color` adds a purple-to-blue gradient to the letters selected by your bionic
+approach. `weight` decreases variable-font weight from 800 to 400 across each
+word. `both` combines the weight change with color fading toward normal text.
+These are experimental visual styles, not established reading improvements.
+They are off by default. Selecting a style enables bionic; selecting `off`
+keeps your bionic approach. Presets retain the style; reset clears it.
+
+Ordinary Markdown chat cannot display these effects and uses the selected
+bionic approach instead. The plugin supplies formatting instructions, not a
+chat renderer; gradients require the host to provide an HTML/CSS reply surface
+and, for weight, a variable font. This setting does not generate files or
+change the formatting of code, paths, URLs, identifiers, or tables.
+
+For an explicitly requested HTML preview, `python3 scripts/render_gradient.py
+--mode both` reads plain prose from stdin and emits an escaped HTML fragment.
+The helper uses the default third prefix in color mode; it is not a Markdown
+parser, so supply only the prose you want to preview. It is also bundled with
+the portable skill.
+
 ## Develop
 
 ```

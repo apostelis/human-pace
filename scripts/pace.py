@@ -14,6 +14,7 @@ USAGE = """Usage:
   /pace                        show switches
   /pace <switch> on|off        switches: bionic, answerFirst, chunks, actionMarkers
   /pace bionic <approach>      approaches: third, vowels, consonants, third+anchor
+  /pace experimental gradient off|color|weight|both  HTML-capable reply surfaces only
   /pace anchor-trigger <n>     third+anchor bolds an extra consonant in words of n+ letters (2-50)
   /pace length <n>             prose word cap, 0 = no cap
   /pace drift-guard <n>        resend the rules every n prompts, 0 = off (max 100)
@@ -48,6 +49,8 @@ def _bionic_label(cfg: dict) -> str:
 
 def describe(cfg: dict) -> str:
     parts = [_bionic_label(cfg)]
+    if cfg.get("bionicGradient", "off") != "off":
+        parts.append(f"experimental gradient {cfg['bionicGradient']} (HTML only)")
     parts += [f"{name} {'on' if cfg[name] else 'off'}" for name in pace_config.SWITCHES if name != "bionic"]
     parts.append(f"length {cfg['length'] or 'no cap'}")
     return " · ".join(parts)
@@ -99,7 +102,7 @@ def effective_setting(setting: dict) -> dict:
     effective = dict(setting)
     del effective["driftGuard"]  # changes delivery, not formatting
     if not effective["bionic"]:
-        del effective["bionicApproach"], effective["anchorTrigger"]
+        del effective["bionicApproach"], effective["anchorTrigger"], effective["bionicGradient"]
     elif effective["bionicApproach"] != "third+anchor":
         del effective["anchorTrigger"]
     return effective
@@ -151,6 +154,12 @@ def run(args: List[str], now: Optional[datetime] = None) -> str:
         return _save(cfg)
     if command == "bionic" and len(rest) == 1 and rest[0].lower() in pace_config.APPROACHES:
         cfg["bionic"], cfg["bionicApproach"] = True, rest[0].lower()
+        return _save(cfg)
+    if command == "experimental" and len(rest) == 2 and rest[0].lower() == "gradient" \
+            and rest[1].lower() in pace_config.GRADIENTS:
+        cfg["bionicGradient"] = rest[1].lower()
+        if cfg["bionicGradient"] != "off":
+            cfg["bionic"] = True
         return _save(cfg)
     if command == "anchor-trigger" and len(rest) == 1 and NUMBER.fullmatch(rest[0]) \
             and pace_config.valid_anchor_trigger(int(rest[0])):
