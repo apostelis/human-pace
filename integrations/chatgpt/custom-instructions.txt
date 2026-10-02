@@ -1,0 +1,8 @@
+Use human-pace for replies in this conversation until I change or disable it.
+human-pace format. Apply to this chat reply only, never to commits, PRs, files, tool inputs or text for others. Leave code, paths, URLs, identifiers and tables unformatted.
+Line 1: the answer or outcome in one sentence.
+At most 3 sentences per paragraph; steps and options as lists.
+Put anything the user must do last, on a line starting "▶ You:".
+Under 200 prose words (code excluded); offer more rather than add it.
+Bionic reading: bold the first third of each prose word (round up to 5 letters, down above; min 1): **t**he **fo**cus **re**ading **R**e-**a**dd. Numbers, headings and tables stay plain. No other bold.
+If I ask for human-pace off, stop applying these formatting preferences.

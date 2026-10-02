@@ -3,7 +3,61 @@
 **A** **Cl**aude **Co**de **pl**ugin **th**at **ma**kes **re**plies **ea**sier **t**o **fo**llow: **bi**onic **re**ading, **an**swer **fi**rst, **sh**ort
 **ch**unks, **ma**rked **ac**tion **it**ems **a**nd **a** **le**ngth **c**ap. **Ev**ery **pa**rt **c**an **b**e **sw**itched **o**n **o**r **o**ff.
 
-## Install
+## ChatGPT and Codex
+
+This repository also packages a portable OpenAI skill in `skills/human-pace/`
+and a root `plugin.json`. The Claude plugin remains in `.claude-plugin/`.
+
+### ChatGPT website or app: custom instructions
+
+Copy [custom-instructions.txt](integrations/chatgpt/custom-instructions.txt) into
+Settings → Personalization → Custom Instructions, or into a project's instructions
+to limit it to that project. You can also paste it into one chat. This enables the
+default focus formatting; ask for changes in ordinary language, such as
+“turn bionic reading off” or “use a 300-word cap”.
+
+This option requires no Python or plugin installation. It does not run `/pace`,
+save local settings, log ratings, or automatically resend rules. Changes made in a
+chat do not edit your saved Custom Instructions. Remove the saved instructions to
+disable them for future chats.
+
+### ChatGPT Work and Codex: shared plugin
+
+Register this checkout as a local marketplace:
+
+```sh
+codex plugin marketplace add /absolute/path/to/human-pace
+```
+
+In the desktop app's Plugins Directory, select the human-pace marketplace and
+install Human Pace. Restart the app if the local marketplace is not visible.
+Invoke the human-pace skill in a new chat, then request your task.
+Availability depends on the host's support for local plugins and skills.
+
+For Codex CLI or desktop without plugin installation, copy the self-contained skill
+into the user's skill directory (run from this repository; do not overwrite an
+existing skill):
+
+```sh
+mkdir -p ~/.agents/skills
+cp -R skills/human-pace ~/.agents/skills/human-pace
+```
+
+Restart Codex and invoke `$human-pace`. To limit the skill to one repository,
+copy it into that repository's `.agents/skills/` instead.
+
+The skill supports formatting switches, all four bionic approaches, length,
+anchor trigger, and presets. Settings last within the current chat. `/pace` is
+conversational syntax when the request reaches the skill, not a registered OpenAI
+slash command; ordinary language works too. Claude's session hooks, drift guard,
+and persistent rating log are not part of this skill. Model formatting is best
+effort, as it is with the Claude rules.
+
+See OpenAI's [plugin packaging guide](https://developers.openai.com/plugins/build/plugins),
+[skill guide](https://learn.chatgpt.com/docs/build-skills), and
+[Custom Instructions guide](https://help.openai.com/en/articles/8096356-chatgpt-custom-instructions).
+
+## Install for Claude Code
 
 ```
 /plugin marketplace add apostelis/human-pace
@@ -46,6 +100,8 @@
 
 ```
 python3 -m unittest discover -s tests -v     # unit tests
+python3 scripts/export_openai.py             # refresh shared skill rules and ChatGPT text
+python3 scripts/export_openai.py --check     # verify exports match rules/*.md
 python3 compliance/run.py                    # score real replies (calls claude -p, costs a few cents)
 python3 compliance/run.py --approach vowels  # score one approach; also --anchor-trigger <n>
 ```
