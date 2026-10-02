@@ -8,9 +8,9 @@ import bionic  # noqa: E402
 
 
 class BoldLengthTest(unittest.TestCase):
-    def test_should_round_up_to_five_letters_and_down_above_with_minimum_one(self):
-        cases = {"a": 1, "to": 1, "the": 1, "word": 2, "focus": 2, "about": 2, "plugin": 2, "reading": 2,
-                 "patterns": 2, "everybody": 3, "understand": 3, "don't": 2}
+    def test_should_round_up_for_every_word_length_with_minimum_one(self):
+        cases = {"a": 1, "to": 1, "the": 1, "word": 2, "focus": 2, "about": 2, "plugin": 2, "reading": 3,
+                 "patterns": 3, "everybody": 3, "understand": 4, "don't": 2}
         for word, expected in cases.items():
             with self.subTest(word=word):
                 self.assertEqual(bionic.bold_length(word), expected)
@@ -18,8 +18,8 @@ class BoldLengthTest(unittest.TestCase):
 
 class BionicWordTest(unittest.TestCase):
     def test_should_bold_prefix_when_given_spec_examples(self):
-        cases = {"the": "**t**he", "focus": "**fo**cus", "reading": "**re**ading",
-                 "understand": "**und**erstand", "don't": "**do**n't", "I'm": "**I**'m"}
+        cases = {"the": "**t**he", "focus": "**fo**cus", "reading": "**rea**ding",
+                 "understand": "**unde**rstand", "don't": "**do**n't", "I'm": "**I**'m"}
         for word, expected in cases.items():
             with self.subTest(word=word):
                 self.assertEqual(bionic.third_word(word), expected)
@@ -70,19 +70,19 @@ class LigatureTest(unittest.TestCase):
 
 class AnchorWordTest(unittest.TestCase):
     def test_should_bold_last_consonant_when_long_word_ends_in_vowel(self):
-        self.assertEqual(bionic.anchor_word("experience"), "**exp**erien**c**e")
+        self.assertEqual(bionic.anchor_word("experience"), "**expe**rien**c**e")
         self.assertEqual(bionic.anchor_word("everybody"), "**eve**rybo**d**y")
 
     def test_should_bold_second_to_last_consonant_when_long_word_ends_in_consonant(self):
-        self.assertEqual(bionic.anchor_word("understand"), "**und**ersta**n**d")
+        self.assertEqual(bionic.anchor_word("understand"), "**unde**rsta**n**d")
 
     def test_should_bold_as_third_when_shorter_than_trigger(self):
-        self.assertEqual(bionic.anchor_word("reading"), "**re**ading")
-        self.assertEqual(bionic.anchor_word("reading", 7), "**re**adi**n**g")
+        self.assertEqual(bionic.anchor_word("reading"), "**rea**ding")
+        self.assertEqual(bionic.anchor_word("reading", 7), "**rea**di**n**g")
 
     def test_should_skip_anchor_right_after_prefix(self):
-        # "planter": 7 letters, trigger 7, prefix "pl", ends in r -> t, not next to the prefix.
-        self.assertEqual(bionic.anchor_word("planter", 7), "**pl**an**t**er")
+        # "planter": 7 letters, trigger 7, prefix "pla", ends in r -> t, not next to the prefix.
+        self.assertEqual(bionic.anchor_word("planter", 7), "**pla**n**t**er")
         # "abbey": prefix "ab", ends in y (vowel) -> last consonant is the 2nd b, right after the prefix.
         self.assertEqual(bionic.anchor_word("abbey", 2), "**ab**bey")
         # "ebb": prefix "e", ends in b -> second-to-last consonant is the 1st b, right after the prefix.
@@ -92,11 +92,11 @@ class AnchorWordTest(unittest.TestCase):
         # "queue": prefix "qu", ends in a vowel -> last consonant is q, already bold.
         self.assertEqual(bionic.anchor_word("queue", 2), "**qu**eue")
         # "aeiouaei": no consonant at all.
-        self.assertEqual(bionic.anchor_word("aeiouaei", 8), "**ae**iouaei")
+        self.assertEqual(bionic.anchor_word("aeiouaei", 8), "**aei**ouaei")
 
     def test_should_skip_apostrophe_when_counting_and_bolding(self):
         # shouldn't: 8 letters, ends in t -> second-to-last consonant is n.
-        self.assertEqual(bionic.anchor_word("shouldn't"), "**sh**ould**n**'t")
+        self.assertEqual(bionic.anchor_word("shouldn't"), "**sho**uld**n**'t")
         # can't: 4 letters, under the trigger.
         self.assertEqual(bionic.anchor_word("can't"), "**ca**n't")
 
@@ -105,7 +105,7 @@ class WordFunctionTest(unittest.TestCase):
     def test_should_return_matching_function_for_every_approach(self):
         self.assertEqual(bionic.APPROACHES, ("third", "vowels", "consonants", "third+anchor"))
         self.assertEqual(bionic.word_function("vowels")("easy"), "**ea**s**y**")
-        self.assertEqual(bionic.word_function("third+anchor", 7)("reading"), "**re**adi**n**g")
+        self.assertEqual(bionic.word_function("third+anchor", 7)("reading"), "**rea**di**n**g")
 
     def test_should_score_against_chosen_approach(self):
         text = bionic.to_bionic("The build failed because the merge dropped a plugin.", "vowels")
@@ -132,7 +132,7 @@ class ScoreBionicTest(unittest.TestCase):
         self.assertEqual(bionic.score_bionic(markdown), (1, 1))
 
     def test_should_score_bullets_and_action_line_when_formatted(self):
-        self.assertEqual(bionic.score_bionic("- **fo**cus\n▶ **Y**ou: **ap**prove"), (3, 3))
+        self.assertEqual(bionic.score_bionic("- **fo**cus\n▶ **Y**ou: **app**rove"), (3, 3))
 
     def test_should_return_zero_total_when_no_prose(self):
         self.assertEqual(bionic.score_bionic("```\ncode\n```"), (0, 0))
@@ -163,7 +163,7 @@ class RuleExamplesTest(unittest.TestCase):
 
     def test_should_show_anchor_that_differs_from_the_letter_before_the_last_consonant(self):
         # In "understand" the letter before the last consonant and the anchor are both "n".
-        self.assertIn("**inf**orma**t**ion", self.rule("third+anchor"))
+        self.assertIn("**info**rma**t**ion", self.rule("third+anchor"))
 
 
 class BoldInCodeTest(unittest.TestCase):

@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.7.2 — 2026-10-02
+
+- Fix `third` to round the prefix length up for every word length, including the shared prefix in `third+anchor`.
+- Update formatting rules and generated custom instructions to match.
+
 ## 0.7.1 — 2026-10-02
 
 - Add opt-in experimental bionic gradients (`color`, `weight`, `both`) for HTML/CSS reply surfaces, with Markdown fallback.

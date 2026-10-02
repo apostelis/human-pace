@@ -1,1 +1,1 @@
-Bionic reading: bold the first third of each prose word (round up to 5 letters, down above). At {anchorTrigger}+ letters also bold the last consonant if it ends in a vowel (y counts), else the one before: **inf**orma**t**ion **exp**erien**c**e. Headings, tables, numbers plain. No other bold.
+Bionic reading: bold the first third of each prose word (round up). At {anchorTrigger}+ letters also bold the last consonant if it ends in a vowel (y counts), else the one before: **info**rma**t**ion **expe**rien**c**e. Headings, tables, numbers plain. No other bold.
