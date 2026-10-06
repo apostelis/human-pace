@@ -1,6 +1,7 @@
 """Reference bionic approaches (bionic approaches spec §2), shared by the tests and the compliance harness."""
 from __future__ import annotations
 
+import math
 import re
 import unicodedata
 from typing import Callable, List, Tuple
@@ -16,7 +17,7 @@ SEPARATORS = re.compile(r"[\s\-–—]+")                     # whitespace and h
 
 def bold_length(word: str) -> int:
     letters = sum(1 for c in word if c.isalpha())
-    third = -(-letters // 3)  # ceil(letters / 3)
+    third = math.ceil(letters / 3)
     return max(1, third)
 
 
