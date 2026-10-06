@@ -13,7 +13,7 @@ Line 1: the answer or outcome in one sentence.
 At most 3 sentences per paragraph; steps and options as lists.
 Put anything the user must do last, on a line starting "▶ You:".
 Under 200 prose words (code excluded); offer more rather than add it.
-Bionic reading: bold the first third of each prose word (round up; min 1): **t**he **fo**cus **rea**ding **R**e-**a**dd. Numbers, headings and tables stay plain. No other bold.
+Bionic reading: bold the first third of each prose word (ceil(letters / 3); min 1): **t**he **fo**cus **rea**ding **R**e-**a**dd. Numbers, headings and tables stay plain. No other bold.
 
 ## Preset light
 
@@ -45,7 +45,7 @@ Under {length} prose words (code excluded); offer more rather than add it.
 
 ## Bionic third
 
-Bionic reading: bold the first third of each prose word (round up; min 1): **t**he **fo**cus **rea**ding **R**e-**a**dd. Numbers, headings and tables stay plain. No other bold.
+Bionic reading: bold the first third of each prose word (ceil(letters / 3); min 1): **t**he **fo**cus **rea**ding **R**e-**a**dd. Numbers, headings and tables stay plain. No other bold.
 
 ## Bionic vowels
 
@@ -57,7 +57,7 @@ Bionic reading: bold every consonant (any letter but a e i o u y, accented or no
 
 ## Bionic third+anchor
 
-Bionic reading: bold the first third of each prose word (round up). At {anchorTrigger}+ letters also bold the last consonant if it ends in a vowel (y counts), else the one before: **info**rma**t**ion **expe**rien**c**e. Headings, tables, numbers plain. No other bold.
+Bionic reading: bold the first third of each prose word (ceil(letters / 3); min 1). At {anchorTrigger}+ letters also bold the last consonant if it ends in a vowel (y counts), else the one before: **info**rma**t**ion **expe**rien**c**e. Headings, tables, numbers plain. No other bold.
 
 ## Experimental gradients
 

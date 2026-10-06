@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.7.3 — 2026-10-06
+
+- Use explicit `ceil(letters / 3)` for the `third` calculation and the shared prefix in `third+anchor`.
+- State the ceiling formula in shared formatting rules and generated custom instructions.
+
 ## 0.7.2 — 2026-10-02
 
 - Fix `third` to round the prefix length up for every word length, including the shared prefix in `third+anchor`.

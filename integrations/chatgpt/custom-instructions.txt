@@ -4,5 +4,5 @@ Line 1: the answer or outcome in one sentence.
 At most 3 sentences per paragraph; steps and options as lists.
 Put anything the user must do last, on a line starting "▶ You:".
 Under 200 prose words (code excluded); offer more rather than add it.
-Bionic reading: bold the first third of each prose word (round up; min 1): **t**he **fo**cus **rea**ding **R**e-**a**dd. Numbers, headings and tables stay plain. No other bold.
+Bionic reading: bold the first third of each prose word (ceil(letters / 3); min 1): **t**he **fo**cus **rea**ding **R**e-**a**dd. Numbers, headings and tables stay plain. No other bold.
 If I ask for human-pace off, stop applying these formatting preferences.
