@@ -1,10 +1,15 @@
 #!/usr/bin/env python3
-"""Open a local interactive formatting preview; never changes saved options."""
+"""Open a local formatting preview or a settings page with Save."""
 import argparse
 import json
 import os
 from pathlib import Path
 import tempfile
+import secrets
+import subprocess
+import sys
+import time
+from http.server import HTTPServer, BaseHTTPRequestHandler
 import webbrowser
 import pace_config
 
@@ -12,18 +17,119 @@ import pace_config
 def render(cfg):
     template = (Path(__file__).resolve().parent.parent / 'preview' / 'index.html').read_text()
     # JSON is embedded in script text, where HTML closing tags must be escaped.
-    return template.replace('__CONFIG__', json.dumps(cfg).replace('<', '\\u003c'))
+    passages = json.loads((Path(__file__).resolve().parent.parent / 'preview' / 'passages.json').read_text())
+    return (template.replace('__CONFIG__', json.dumps(cfg).replace('<', '\\u003c'))
+            .replace('__PASSAGES__', json.dumps(passages).replace('<', '\\u003c')))
 
 
 def preview_config():
     return pace_config.load_effective_config(env=pace_config.option_environment())[0]
 
 
+def save_settings(data):
+    if not isinstance(data, dict) or set(data) != set(pace_config.DEFAULTS):
+        raise ValueError("Supply all formatting settings and no unknown fields.")
+    cfg, invalid = pace_config.validate(data)
+    if invalid:
+        raise ValueError("Invalid settings: " + ", ".join(invalid))
+    env = pace_config.option_environment()
+    if env.get("CLAUDE_PLUGIN_OPTION_CONFIGURATIONSOURCE") == "native":
+        values = {key: value if isinstance(value, str) else json.dumps(value) for key, value in cfg.items()}
+        values["configurationSource"] = "native"
+        result = subprocess.run(["claude", "plugin", "configure", "human-pace@human-pace", "--values-stdin"],
+                                input=json.dumps(values), text=True, capture_output=True, timeout=15)
+        if result.returncode:
+            raise ValueError("Claude could not save native options: " + result.stderr.strip()[:500])
+        return "Saved native options. Reload the plugin or restart the Claude session to apply them."
+    pace_config.save_config(cfg)
+    return "Saved. Your choices apply from your next ordinary prompt in Claude."
+
+
+def create_server(token):
+    class Handler(BaseHTTPRequestHandler):
+        def log_message(self, *args):
+            pass
+
+        def respond(self, status, body, content_type="application/json"):
+            encoded = body.encode("utf-8")
+            self.send_response(status)
+            self.send_header("Content-Type", content_type)
+            self.send_header("Content-Length", str(len(encoded)))
+            self.send_header("Cache-Control", "no-store")
+            self.send_header("X-Content-Type-Options", "nosniff")
+            self.send_header("Referrer-Policy", "no-referrer")
+            self.send_header("Content-Security-Policy", "frame-ancestors 'none'")
+            self.end_headers()
+            self.wfile.write(encoded)
+
+        def authorized(self):
+            host = "127.0.0.1:" + str(self.server.server_port)
+            return (self.headers.get("Host") == host and
+                    self.headers.get("Origin", "http://" + host) == "http://" + host and
+                    self.path.startswith("/" + token + "/"))
+
+        def do_GET(self):
+            if not self.authorized() or self.path != "/" + token + "/":
+                self.respond(403, '{}')
+                return
+            self.respond(200, render(preview_config()), "text/html; charset=utf-8")
+
+        def do_POST(self):
+            if not self.authorized() or self.path != "/" + token + "/save":
+                self.respond(403, '{}')
+                return
+            try:
+                length = int(self.headers.get("Content-Length", "0"))
+                if not 0 < length <= 8192 or self.headers.get("Content-Type") != "application/json":
+                    raise ValueError("Expected a small JSON settings object.")
+                data = json.loads(self.rfile.read(length))
+                message = save_settings(data)
+                self.respond(200, json.dumps({"message": message}))
+            except (ValueError, OSError, subprocess.SubprocessError) as error:
+                self.respond(400, json.dumps({"message": str(error)}))
+
+    server = HTTPServer(("127.0.0.1", 0), Handler)
+    server.timeout = 1
+    original_get_request = server.get_request
+    def get_request():
+        connection, address = original_get_request()
+        connection.settimeout(5)
+        return connection, address
+    server.get_request = get_request
+    return server
+
+
+def serve():
+    token = secrets.token_urlsafe(32)
+    with create_server(token) as server:
+        print("http://127.0.0.1:" + str(server.server_port) + "/" + token + "/", flush=True)
+        deadline = time.monotonic() + 1800
+        while time.monotonic() < deadline:
+            server.handle_request()
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--serve', action='store_true', help=argparse.SUPPRESS)
+    parser.add_argument('--settings', action='store_true', help='Start the local settings page with Save')
     parser.add_argument('--open', action='store_true', help='Open the preview in your browser')
     parser.add_argument('--output', type=Path, help='Save to this HTML file')
     args = parser.parse_args()
+    if args.serve:
+        serve()
+        return
+    if args.settings:
+        child = subprocess.Popen([sys.executable, str(Path(__file__).resolve()), '--serve'],
+                                 stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True,
+                                 start_new_session=True)
+        url = child.stdout.readline().strip()
+        child.stdout.close()
+        if not url.startswith('http://127.0.0.1:'):
+            raise SystemExit('Could not start the local settings page.')
+        print(url)
+        if args.open:
+            webbrowser.open(url)
+        return
     if args.output:
         path = args.output.resolve()
         path.write_text(render(preview_config()), encoding='utf-8')

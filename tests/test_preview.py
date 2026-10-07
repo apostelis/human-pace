@@ -29,7 +29,7 @@ class Element {
 const elements={};
 const document={createElement:()=>new Element(),createTextNode:text=>({textContent:text}),getElementById:id=>elements[id]||(elements[id]=new Element())};
 for(const id of ['bionic','answerFirst','chunks','actionMarkers'])document.getElementById(id).type='checkbox';
-for(const id of ['length','anchorTrigger'])document.getElementById(id).type='number';
+for(const id of ['length','anchorTrigger','driftGuard'])document.getElementById(id).type='number';
 '''
         checks = '''
 function marks(text,approach){return word(text,{...initial,bionicApproach:approach,bionicGradient:'off'}).children.map(s=>Number(s.style.fontWeight)===800)}
@@ -41,6 +41,15 @@ const weights=word('reading',{...initial,bionicGradient:'weight'}).children.map(
 assert.equal(weights[0],800);assert.equal(weights.at(-1),400);
 const p=prose('<script>alert(1)</script>',{...initial,bionic:false});
 assert.equal(p.children.map(c=>c.textContent).join(''),'<script>alert(1)</script>');
+
+// Formatting changes must not replace the passage.
+const before=current;update();assert.equal(current,before);
+el('text-type').value='technical';
+const distinct=new Set();
+for(let i=0;i<3;i++){newPassage();distinct.add(current.answer)}
+assert.equal(distinct.size,3);
+newPassage();assert.match(el('passage-status').textContent,/another round/);
+el('text-type').value='narrative';newPassage();assert.equal(current.type,'narrative');
 '''
         result = subprocess.run(['node', '-e', harness + source + checks], capture_output=True, text=True)
         self.assertEqual(result.returncode, 0, result.stderr)

@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.9.0 — 2026-10-07
+
+- Add twelve sample passages across four text types, with a New passage button and no repeats within a category until exhausted.
+
+- Add a browser settings page with live preview and Save, opened through `/pace-settings` or `/pace-preview`, including a reminder-interval control.
+- Save to existing command settings or Claude’s native configuration API, with validation and visible errors.
+
 ## 0.8.0 — 2026-10-07
 
 - Add native Claude Code plugin configuration for all formatting settings, with an explicit source selector preserving existing command settings. Requires Claude Code 2.1.271+.
