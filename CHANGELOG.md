@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.10.0 — 2026-10-07
+
+- Prefer the connected embedded MCP settings tool when opening settings or preview.
+- Avoid launching unreachable browser servers in Cowork; retain the browser fallback for a confirmed local Mac shell. The embedded connector must be installed separately.
+
 ## 0.9.0 — 2026-10-07
 
 - Add twelve sample passages across four text types, with a New passage button and no repeats within a category until exhausted.
