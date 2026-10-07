@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.8.0 — 2026-10-07
+
+- Add native Claude Code plugin configuration for all formatting settings, with an explicit source selector preserving existing command settings. Requires Claude Code 2.1.271+.
+- Add `/pace-preview` to open a local interactive browser preview; preview controls do not modify saved settings.
+
 ## 0.7.3 — 2026-10-06
 
 - Use explicit `ceil(letters / 3)` for the `third` calculation and the shared prefix in `third+anchor`.
