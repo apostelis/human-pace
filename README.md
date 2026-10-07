@@ -59,21 +59,37 @@ values are validated again by the hook; invalid fields use their defaults.
 Picker fields require Claude Code 2.1.271+, including when using commands mode.
 Claude Desktop’s graphical plugin UI may not expose Configure options yet.
 
-### Interactive preview
+### Settings with live preview (including Claude Desktop)
 
-Invoke `/human-pace:pace-preview` (or `/pace-preview` if unambiguous) to open an
-interactive browser preview. Compare all four bionic approaches, gradients,
-paragraph layout, and word limits, or paste your own plain prose. The preview
-is illustrative; it does not change saved settings. Copy your preferred choices
-into Claude’s Configure options panel. Gradients appear in the browser preview;
+Choose **human-pace:pace-settings** from Claude’s command picker, or ask Claude to
+run the Human Pace `pace-settings` command. `/human-pace:pace-settings` and
+`/human-pace:pace-preview` both open the same browser settings page. No terminal
+commands are required from you. This is a separate browser page, not an embedded
+Claude Desktop panel; the Desktop app may not show the native configuration dialog.
+
+Compare all four bionic approaches, gradients, paragraph layout, and word limits,
+or paste your own plain prose. Choose explanations, technical text, instructions,
+or narratives, and select **New passage** to try unfamiliar text. Each category
+has three passages; none repeats until that category is exhausted. Changing
+formatting keeps the passage in place for comparison. These examples are not a
+reading-performance assessment. Set the reminder interval and select **Save
+settings** to apply your choices. In command mode, Save writes the existing
+`~/.claude/human-pace.json` (or `HUMAN_PACE_CONFIG` override); changes apply on the
+next ordinary prompt. In native mode, Save calls Claude’s plugin configuration
+API; reload the plugin or restart the Claude session after saving. Save errors
+are shown in the page and do not claim that changes were applied.
+
+The page starts with your user-level native choices when native mode is selected,
+otherwise with your `/pace` settings. Managed or inline settings are resolved by
+Claude’s hooks but are not available to the settings subprocess, so its initial
+choices may differ in those environments. The server listens only on localhost,
+uses an unguessable page URL, and expires after 30 minutes. Reopen it from Claude
+if it expires. Roboto Flex is fetched from Google Fonts for variable weights,
+with a system-font fallback when unavailable. Gradients appear in the browser;
 ordinary Claude chat continues to use Markdown bolding.
 
-The preview starts with your user-level native choices when native mode is
-selected, otherwise with your `/pace` settings. Managed or inline settings are
-resolved by Claude’s hooks but are not available to the preview subprocess, so
-its initial choices may differ in those environments. The preview is a temporary
-local HTML file; no server is started. Roboto Flex is fetched from Google Fonts
-for variable weights, with a system-font fallback when unavailable.
+For a standalone preview without Save, `python3 scripts/preview.py --output
+preview.html` still produces an HTML file.
 
 ## ChatGPT and Codex
 

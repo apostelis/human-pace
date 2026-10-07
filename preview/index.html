@@ -7,7 +7,7 @@
 body{max-width:1100px;margin:40px auto;padding:0 24px}h1{letter-spacing:-.04em;font-size:36px;margin-bottom:8px}.muted{opacity:.75;line-height:1.5}main{display:grid;grid-template-columns:280px 1fr;gap:28px;margin-top:28px}aside,article{background:light-dark(white,#23252a);border:1px solid light-dark(#ddd,#42454c);border-radius:16px;padding:24px}label{display:block;margin-bottom:16px}label:has(input[type=checkbox]){display:flex;gap:10px;align-items:center}select,input[type=number],textarea{box-sizing:border-box;width:100%;padding:9px;margin-top:6px;background:light-dark(#fafafa,#191b20);color:inherit;border:1px solid #888;border-radius:6px;font:inherit}textarea{min-height:100px}input[type=checkbox]{width:18px;height:18px;accent-color:#8052c8}#sample{font-family:'Roboto Flex',sans-serif;font-size:20px;line-height:1.7;overflow-wrap:anywhere;font-kerning:none;font-variant-ligatures:none}#sample p{margin:0 0 18px}.word{display:inline-block}.color{background:linear-gradient(90deg,var(--purple),var(--blue));background-clip:text;color:transparent}.both{background:linear-gradient(90deg,var(--purple),var(--blue) 40%,var(--ink) 85%);background-clip:text;color:transparent}code{font-size:14px}button{padding:10px 16px;border-radius:8px;border:1px solid #888;font:inherit;background:light-dark(#eee,#333);color:inherit;cursor:pointer}@media(max-width:720px){main{grid-template-columns:1fr}}
 </style>
 <h1>Find your reading pace</h1>
-<p class="muted">Try styles on sample prose. These controls only change this preview. Save your choices in Claude’s Human Pace configuration panel.</p>
+<p class="muted">Try styles on sample prose. Adjust the controls and compare the sample. Save your choices to apply them in Claude.</p>
 <main><aside aria-label="Preview controls">
 <label><input id="bionic" type="checkbox">Bionic reading</label>
 <label>Approach<select id="bionicApproach"><option>third</option><option>vowels</option><option>consonants</option><option>third+anchor</option></select></label>
@@ -17,17 +17,26 @@ body{max-width:1100px;margin:40px auto;padding:0 24px}h1{letter-spacing:-.04em;f
 <label><input id="chunks" type="checkbox">Short paragraphs</label>
 <label><input id="actionMarkers" type="checkbox">Action markers</label>
 <label>Word limit (0 = unlimited)<input id="length" type="number" min="0"></label>
+<label>Reminder interval (0 = off)<input id="driftGuard" type="number" min="0" max="100"></label>
+<button id="save" type="button">Save settings</button><p id="save-status" role="status" class="muted"></p>
 <button id="reset" type="button">Restore initial choices</button>
-</aside><article><h2>Sample reply</h2><div id="sample" aria-live="polite"></div><p id="count" class="muted"></p>
+</aside><article><h2>Try unfamiliar text</h2>
+<label>Text type<select id="text-type"><option value="explanation">Everyday explanation</option><option value="technical">Technical passage</option><option value="instructions">Practical instructions</option><option value="narrative">Short narrative</option></select></label>
+<button id="new-passage" type="button">New passage</button><p id="passage-status" class="muted" role="status"></p><div id="sample" aria-live="polite"></div><p id="count" class="muted"></p>
 <label>Your own prose<textarea id="custom" placeholder="Paste plain prose to compare letter styles (no code or tables)"></textarea></label>
 <p class="muted">Illustrative preview: model replies vary. Gradients require HTML; Claude chat uses bolding. Variable weights use Roboto Flex when available. The reminder interval affects when rules are sent, so it has no visual effect here.</p>
 <details><summary>Choices to copy into Claude</summary><pre id="choices"></pre></details>
 </article></main>
 <script>
 const initial=__CONFIG__;
-const ids=['bionic','bionicApproach','bionicGradient','anchorTrigger','answerFirst','chunks','actionMarkers','length'];
+const passages=__PASSAGES__;
+let current=passages[0];
+const seen=new Set([0]);
+function newPassage(){const type=el('text-type').value||'explanation';const matching=passages.map((p,i)=>p.type===type?i:-1).filter(i=>i>=0);let available=matching.filter(i=>!seen.has(i));const repeated=available.length===0;if(repeated){matching.forEach(i=>seen.delete(i));available=matching.filter(i=>passages[i]!==current);if(!available.length)available=matching}const index=available[Math.floor(Math.random()*available.length)];seen.add(index);current=passages[index];el('custom').value='';el('passage-status').textContent=repeated?'All passages of this type have been shown. Starting another round.':'New passage. Keep this text while comparing styles, or request another.';update()}
+
+const ids=['bionic','bionicApproach','bionicGradient','anchorTrigger','answerFirst','chunks','actionMarkers','length','driftGuard'];
 const el=id=>document.getElementById(id);
-function config(){const c={...initial};for(const id of ids){const e=el(id);c[id]=e.type==='checkbox'?e.checked:e.type==='number'?Math.max(id==='anchorTrigger'?2:0,Math.min(id==='anchorTrigger'?50:Infinity,Number(e.value)||0)):e.value}return c}
+function config(){const c={...initial};for(const id of ids){const e=el(id);c[id]=e.type==='checkbox'?e.checked:e.type==='number'?Math.max(id==='anchorTrigger'?2:0,Math.min(id==='anchorTrigger'?50:id==='driftGuard'?100:Infinity,Number(e.value)||0)):e.value}return c}
 const isLetter=v=>/\p{L}/u.test(v);
 const isVowel=v=>isLetter(v)&&/[aeiouyæœ]/i.test(v.normalize('NFD')[0]);
 function word(token,c){const letters=Array.from(token);const indices=letters.map((v,i)=>isLetter(v)?i:-1).filter(i=>i>=0);const n=indices.length;const marked=new Set();
@@ -37,7 +46,10 @@ const outer=document.createElement('span');outer.className='word';let index=0;
 letters.forEach((v,i)=>{const s=document.createElement('span');s.textContent=v;const mode=c.bionicGradient;s.style.fontWeight=mode==='weight'||mode==='both'?isLetter(v)?Math.round(800-400*index/Math.max(n-1,1)):400:marked.has(i)?800:400;if(mode==='color'&&!marked.has(i))s.style.color='var(--ink)';outer.append(s);if(isLetter(v))index++});
 if(c.bionicGradient==='both')outer.classList.add('both');if(c.bionicGradient==='color')outer.classList.add('color');return outer}
 function prose(text,c){const p=document.createElement('p');let end=0;for(const m of text.matchAll(/\p{L}+(?:['’]\p{L}+)*/gu)){p.append(document.createTextNode(text.slice(end,m.index)));p.append(c.bionic?word(m[0],c):document.createTextNode(m[0]));end=m.index+m[0].length}p.append(document.createTextNode(text.slice(end)));return p}
-function update(){const c=config();const own=el('custom').value.trim();const answer='You can configure Human Pace through Claude’s plugin options.';const context='Choose the reading approach that feels comfortable. Short paragraphs keep related ideas together. Try a few settings before deciding which ones help you follow longer replies.';let lines=own?[own]:c.answerFirst?[answer,context]:[context,answer];if(!own&&c.actionMarkers)lines.push('▶ You: Save your preferred choices in the plugin configuration panel.');if(!c.chunks)lines=[lines.join(' ')];let remaining=c.length||Infinity;el('sample').replaceChildren();let total=0;for(let text of lines){const words=text.split(/\s+/);const take=words.slice(0,remaining);if(!take.length)break;total+=take.length;remaining-=take.length;el('sample').append(prose(take.join(' '),c))}el('count').textContent=total+' words shown';el('choices').textContent=JSON.stringify(c,null,2)}
+function update(){const c=config();const own=el('custom').value.trim();const answer=current.answer;const context=current.context;let lines=own?[own]:c.answerFirst?[answer,context]:[context,answer];if(!own&&c.actionMarkers)lines.push('▶ You: '+current.action);if(!c.chunks)lines=[lines.join(' ')];let remaining=c.length||Infinity;el('sample').replaceChildren();let total=0;for(let text of lines){const words=text.split(/\s+/);const take=words.slice(0,remaining);if(!take.length)break;total+=take.length;remaining-=take.length;el('sample').append(prose(take.join(' '),c))}el('count').textContent=total+' words shown';el('choices').textContent=JSON.stringify(c,null,2)}
+async function save(){const button=el('save');button.disabled=true;el('save-status').textContent='Saving…';try{const response=await fetch(new URL('save',location.href),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(config())});const result=await response.json();if(!response.ok)throw new Error(result.message||'Save failed.');Object.assign(initial,config());el('save-status').textContent=result.message}catch(error){el('save-status').textContent='Could not save: '+error.message+' Reopen the settings page from Claude if it has expired.'}finally{button.disabled=false}}
 function reset(){for(const id of ids){const e=el(id);if(e.type==='checkbox')e.checked=initial[id];else e.value=initial[id]}update()}
+el('text-type').addEventListener('change',newPassage);el('new-passage').addEventListener('click',newPassage);el('passage-status').textContent='Change styles on this passage, then try a new one. These samples do not measure reading improvement.';
 for(const id of [...ids,'custom'])el(id).addEventListener('input',update);el('reset').addEventListener('click',reset);reset();
+if(typeof location!=='undefined'){const local=location.protocol==='http:'&&location.hostname==='127.0.0.1';el('save').disabled=!local;el('save-status').textContent=local?'Changes are not saved until you select Save. This page expires after 30 minutes.':'Preview only. Open Human Pace settings from Claude to save changes.';el('save').addEventListener('click',save)}
 </script></html>
