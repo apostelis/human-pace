@@ -155,7 +155,7 @@ def main(stdin=sys.stdin, stdout=sys.stdout, env: Mapping[str, str] = os.environ
         if should_skip(hook_input, env):
             return 0
         event = "SessionStart" if hook_input.get("hook_event_name") == "SessionStart" else "UserPromptSubmit"
-        cfg, error = pace_config.load_config()
+        cfg, error = pace_config.load_effective_config(env=env)
         text = rules_to_send(event, build_rules(cfg, config_error=error), hook_input.get("session_id"),
                              cfg["driftGuard"])
         if text:

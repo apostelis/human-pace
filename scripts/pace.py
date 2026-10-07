@@ -144,10 +144,15 @@ def report() -> str:
 
 
 def run(args: List[str], now: Optional[datetime] = None) -> str:
-    cfg, error = pace_config.load_config()
+    env = pace_config.option_environment()
+    native = env.get("CLAUDE_PLUGIN_OPTION_CONFIGURATIONSOURCE") == "native"
+    cfg, error = pace_config.load_effective_config(env=env)
+    if native and args and args[0].lower() not in ("rate", "report"):
+        return "Human Pace uses native configuration. Change options in the plugin's Configure options panel, or select configuration source commands to use /pace."
     if not args:
-        warning = f"\n(Config was invalid: {error}. Showing defaults; any change rewrites it.)" if error else ""
-        return f"human-pace: {status(cfg)}{warning}"
+        warning = (f"\n({error}. Invalid fields use defaults; change them in Configure options.)" if native else
+                   f"\n(Config was invalid: {error}. Showing defaults; any change rewrites it.)") if error else ""
+        return f"human-pace: {status(cfg)}{warning}" + ("\nConfiguration source: native (Configure options panel)." if native else "")
     command, rest = args[0].lower(), args[1:]
     if command in SWITCH_NAMES and len(rest) == 1 and rest[0].lower() in ("on", "off"):
         cfg[SWITCH_NAMES[command]] = rest[0].lower() == "on"

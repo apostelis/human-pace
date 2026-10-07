@@ -29,6 +29,48 @@ def defaults() -> dict:
     return dict(DEFAULTS)
 
 
+def option_environment(env=None):
+    """Read user-level native choices for preview and /pace subprocesses.
+
+    Hooks receive resolved options from Claude, including managed settings.
+    Bash command subprocesses do not, so user settings are a fallback there.
+    """
+    result = dict(os.environ if env is None else env)
+    if "CLAUDE_PLUGIN_OPTION_CONFIGURATIONSOURCE" in result:
+        return result
+    try:
+        settings = json.loads((Path.home() / ".claude" / "settings.json").read_text())
+        options = settings["pluginConfigs"]["human-pace@human-pace"]["options"]
+        for key, value in options.items():
+            if key not in DEFAULTS and key != "configurationSource":
+                continue
+            result["CLAUDE_PLUGIN_OPTION_" + key.upper()] = value if isinstance(value, str) else json.dumps(value)
+    except (OSError, ValueError, KeyError, TypeError, AttributeError):
+        pass
+    return result
+
+
+def load_effective_config(path=None, env=None):
+    """Native panel settings are opt-in; command settings remain untouched."""
+    env = os.environ if env is None else env
+    prefix = "CLAUDE_PLUGIN_OPTION_"
+    if env.get(prefix + "CONFIGURATIONSOURCE") != "native":
+        return load_config(path)
+    values, invalid = {}, []
+    for key, default in DEFAULTS.items():
+        raw = env.get(prefix + key.upper())
+        if raw is None:
+            continue
+        try:
+            values[key] = json.loads(raw) if isinstance(default, (bool, int)) else raw
+        except (ValueError, TypeError):
+            invalid.append(key)
+    cfg, rejected = validate(values)
+    invalid.extend(rejected)
+    error = "Native human-pace options have invalid values for: " + ", ".join(invalid) if invalid else None
+    return cfg, error
+
+
 def _valid_length(value) -> bool:
     return isinstance(value, int) and not isinstance(value, bool) and value >= 0
 

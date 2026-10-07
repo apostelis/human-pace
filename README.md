@@ -42,6 +42,39 @@
 **He**adless **ru**ns (`claude -p`, **t**he **Ag**ent **S**DK) **a**re **sk**ipped, **s**o **sc**ripts **a**nd **C**I **g**et **pl**ain **ou**tput.
 **S**et `HUMAN_PACE=1` **t**o **fo**rce **t**he **ru**les **o**n **th**ere, **o**r `HUMAN_PACE=0` **t**o **tu**rn **th**em **o**ff **eve**rywhere.
 
+## Configure through Claude’s plugin panel
+
+On Claude Code 2.1.271 or newer, open `/plugin`, select **Installed → human-pace →
+Configure options**, and set **Configuration source** to **native**. You can then
+change bionic reading, its approach, gradients, paragraph layout, action markers,
+word limit, and reminder interval from the panel. These fields also appear in
+`/config`. Let Claude reload the plugin when prompted; updated rules apply to the
+next ordinary prompt.
+
+The default source is **commands**, preserving your existing `/pace` settings in
+`~/.claude/human-pace.json`. In **native** mode the panel owns the settings and
+`/pace` changes are declined; `/pace rate` and `/pace report` still work. Switch
+back to **commands** to restore the settings file without losing it. Native
+values are validated again by the hook; invalid fields use their defaults.
+Picker fields require Claude Code 2.1.271+, including when using commands mode.
+Claude Desktop’s graphical plugin UI may not expose Configure options yet.
+
+### Interactive preview
+
+Invoke `/human-pace:pace-preview` (or `/pace-preview` if unambiguous) to open an
+interactive browser preview. Compare all four bionic approaches, gradients,
+paragraph layout, and word limits, or paste your own plain prose. The preview
+is illustrative; it does not change saved settings. Copy your preferred choices
+into Claude’s Configure options panel. Gradients appear in the browser preview;
+ordinary Claude chat continues to use Markdown bolding.
+
+The preview starts with your user-level native choices when native mode is
+selected, otherwise with your `/pace` settings. Managed or inline settings are
+resolved by Claude’s hooks but are not available to the preview subprocess, so
+its initial choices may differ in those environments. The preview is a temporary
+local HTML file; no server is started. Roboto Flex is fetched from Google Fonts
+for variable weights, with a system-font fallback when unavailable.
+
 ## ChatGPT and Codex
 
 This repository also packages a portable OpenAI skill in `skills/human-pace/`

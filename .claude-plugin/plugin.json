@@ -1,10 +1,102 @@
 {
   "name": "human-pace",
-  "version": "0.7.3",
+  "version": "0.8.0",
   "description": "Human-paced replies: bionic reading, answer first, short chunks, action markers and a length cap, each toggleable with /pace.",
-  "author": { "name": "a.palogos" },
+  "author": {
+    "name": "a.palogos"
+  },
   "homepage": "https://github.com/apostelis/human-pace",
   "repository": "https://github.com/apostelis/human-pace",
   "license": "MIT",
-  "keywords": ["accessibility", "adhd", "bionic-reading", "focus", "formatting", "readability"]
+  "keywords": [
+    "accessibility",
+    "adhd",
+    "bionic-reading",
+    "focus",
+    "formatting",
+    "readability"
+  ],
+  "userConfig": {
+    "configurationSource": {
+      "type": "string",
+      "title": "Configuration source",
+      "description": "Choose native to use this panel, or commands to use /pace and your existing settings file.",
+      "options": [
+        "commands",
+        "native"
+      ],
+      "default": "commands"
+    },
+    "bionic": {
+      "type": "boolean",
+      "title": "Bionic reading",
+      "description": "Emphasize selected letters in prose.",
+      "default": true
+    },
+    "bionicApproach": {
+      "type": "string",
+      "title": "Bionic approach",
+      "description": "Choose which letters are emphasized.",
+      "default": "third",
+      "options": [
+        "third",
+        "vowels",
+        "consonants",
+        "third+anchor"
+      ]
+    },
+    "bionicGradient": {
+      "type": "string",
+      "title": "Experimental gradient",
+      "description": "HTML previews only; ordinary chat uses bolding.",
+      "default": "off",
+      "options": [
+        "off",
+        "color",
+        "weight",
+        "both"
+      ]
+    },
+    "anchorTrigger": {
+      "type": "number",
+      "title": "Anchor word length",
+      "description": "Minimum word length for an extra anchor (2\u201350).",
+      "default": 8,
+      "min": 2,
+      "max": 50
+    },
+    "answerFirst": {
+      "type": "boolean",
+      "title": "Answer first",
+      "description": "Start with the answer or outcome.",
+      "default": true
+    },
+    "chunks": {
+      "type": "boolean",
+      "title": "Short paragraphs",
+      "description": "Keep paragraphs to three sentences.",
+      "default": true
+    },
+    "actionMarkers": {
+      "type": "boolean",
+      "title": "Action markers",
+      "description": "Mark actions with \u25b6 You:.",
+      "default": true
+    },
+    "length": {
+      "type": "number",
+      "title": "Word limit",
+      "description": "Maximum prose words; 0 removes the limit.",
+      "default": 200,
+      "min": 0
+    },
+    "driftGuard": {
+      "type": "number",
+      "title": "Reminder interval",
+      "description": "Resend rules every N prompts; 0 disables reminders.",
+      "default": 10,
+      "min": 0,
+      "max": 100
+    }
+  }
 }
