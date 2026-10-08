@@ -217,3 +217,13 @@ class IntegrationTest(unittest.TestCase):
             server.server_close()
             worker.join()
         self.assertEqual(self.events(), [])
+
+    def test_existing_test_runners_cannot_record_into_callers_store(self):
+        import subprocess
+        repo = Path(__file__).resolve().parents[1]
+        for args in ([str(repo / 'tests' / 'test_pace.py')],
+                     ['-m', 'unittest', 'discover', '-s', str(repo / 'tests'), '-p', 'test_gradient.py']):
+            result = subprocess.run([sys.executable, *args], cwd=repo, env=dict(os.environ),
+                                    capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(self.events(), [], 'test runner polluted caller analytics store')

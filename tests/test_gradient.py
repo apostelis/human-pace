@@ -48,3 +48,6 @@ class GradientTest(unittest.TestCase):
         self.assertIn('class="hp-color"', render_gradient.render('reading', 'color'))
         with self.assertRaises(ValueError):
             render_gradient.render('reading', 'invalid')
+
+from analytics_test_support import isolated_analytics
+setUpModule, tearDownModule = isolated_analytics()
