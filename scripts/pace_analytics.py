@@ -455,3 +455,23 @@ class AnalyticsStore:
 def default_store(env: Optional[Mapping[str, str]] = None) -> AnalyticsStore:
     env = os.environ if env is None else env
     return AnalyticsStore(Path(env.get('HUMAN_PACE_ANALYTICS_DIR', '~/.claude/human-pace-analytics')))
+
+
+def record_action(operation: str, outcome: str, *, source: str, cfg: Optional[dict],
+                  config_source: str, now: datetime, events: Optional[List[dict]] = None) -> None:
+    """Record an executed action and its effects without changing its result."""
+    try:
+        store = default_store()
+        if not store.preferences()['enabled']:
+            return
+        common = dict(now=now, integration='unknown', source=source, cfg=cfg,
+                      config_source=config_source)
+        batch = [make_event('command_invoked', operation=operation, outcome=outcome, **common)]
+        for descriptor in events or []:
+            fields = dict(descriptor)
+            kind = fields.pop('event')
+            current = {**common, 'cfg': fields.pop('cfg', cfg)}
+            batch.append(make_event(kind, **current, **fields))
+        store.record(batch, now=now)
+    except Exception:
+        pass
