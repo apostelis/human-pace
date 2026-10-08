@@ -1,6 +1,9 @@
 """Explicit HTTPS requests only. Imports and recorder paths never send data."""
 import http.client
 import ssl
+import subprocess
+import sys
+from pathlib import Path
 import time
 from datetime import datetime, timedelta, timezone
 from email.utils import parsedate_to_datetime
@@ -19,13 +22,36 @@ class HttpsTransport:
             raise RemoteError('Invalid HTTPS collection destination.')
         self.url=urlsplit(endpoint);self.clock=clock
     def request(self,method,path,*,body,credential,deadline):
+        # A short-lived worker enforces a hard deadline across libc DNS and trickling
+        # HTTP headers, which socket timeouts alone cannot bound.
+        remaining=deadline-self.clock()
+        if remaining<=0:raise TransportError('timeout')
+        payload=c.canonical(dict(endpoint=self.url.geturl(),method=method,path=path,
+            body=body.hex(),credential=credential,timeout=remaining))
+        child=subprocess.Popen([sys.executable,str(Path(__file__).resolve()),'--request-worker'],
+            stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.DEVNULL)
+        try:
+            raw,_=child.communicate(payload,timeout=max(.001,deadline-self.clock()))
+            result=c.strict_json(raw,max_bytes=65536)
+            if not isinstance(result,dict):raise TransportError('invalid_response')
+            if 'transport_error' in result:
+                raise TransportError(result['transport_error'],status=result.get('status',0),retry_after=result.get('retry_after'))
+            return result
+        except subprocess.TimeoutExpired:
+            child.kill();child.communicate()
+            raise TransportError('timeout') from None
+        except (OSError,c.ContractError):raise TransportError('network') from None
+        finally:
+            if child.poll() is None:child.kill();child.communicate()
+    def _request(self,method,path,*,body,credential,deadline):
         if path not in ('/v1/registrations','/v1/events','/v1/installation','/v1/deletion'):raise TransportError('route')
         def remaining():
             seconds=deadline-self.clock()
             if seconds<=0:raise TransportError('timeout')
             return seconds
-        connection=http.client.HTTPSConnection(self.url.hostname,self.url.port or 443,timeout=remaining(),context=ssl.create_default_context())
+        connection=None
         try:
+            connection=http.client.HTTPSConnection(self.url.hostname,self.url.port or 443,timeout=remaining(),context=ssl.create_default_context())
             headers={'Content-Type':'application/json','Accept-Encoding':'identity','Content-Length':str(len(body))}
             if credential:headers['Authorization']='Bearer '+credential
             connection.connect();connection.sock.settimeout(remaining())
@@ -48,7 +74,8 @@ class HttpsTransport:
             return c.strict_json(bytes(raw),max_bytes=65536)
         except (OSError,http.client.HTTPException,c.ContractError,ValueError):
             raise TransportError('network') from None
-        finally:connection.close()
+        finally:
+            if connection is not None:connection.close()
 
 def retry_seconds(count,retry_after,now):
     delay=min(86400,60*2**min(11,count))
@@ -103,16 +130,30 @@ def delete_all(store,transport,*,now):
     for item in targets:
         if time.monotonic()>=deadline:failed+=1;continue
         try:
+            target_transport = HttpsTransport(item['recipient']['endpoint']) if transport is None or isinstance(transport, HttpsTransport) else transport
             creds=item['credentials']
             if creds is None:
-                creds=transport.request('POST','/v1/registrations',body=c.canonical({'installation_id':item['identity'],'recovery_key':item['recovery_key']}),credential=None,deadline=deadline)
+                creds=target_transport.request('POST','/v1/registrations',body=c.canonical({'installation_id':item['identity'],'recovery_key':item['recovery_key']}),credential=None,deadline=deadline)
                 store.save_credentials(item['identity'],creds,generation=-1)
-            receipt=transport.request('DELETE','/v1/installation',body=b'',credential=creds['deletion_token'],deadline=deadline)
+            receipt=target_transport.request('DELETE','/v1/installation',body=b'',credential=creds['deletion_token'],deadline=deadline)
             store.deletion_receipt(item['identity'],receipt)
             if receipt['status']=='pending':
-                receipt=transport.request('GET','/v1/deletion',body=b'',credential=creds['deletion_token'],deadline=deadline)
+                receipt=target_transport.request('GET','/v1/deletion',body=b'',credential=creds['deletion_token'],deadline=deadline)
                 store.deletion_receipt(item['identity'],receipt)
             if receipt['status']=='completed':completed+=1
             else:pending+=1
         except (OSError,RemoteError,c.ContractError,TypeError,KeyError):failed+=1
     return dict(completed=completed,pending=pending,failed=failed)
+
+
+def _worker():
+    try:
+        data=c.strict_json(sys.stdin.buffer.read(1024*1024+1),max_bytes=1024*1024)
+        transport=HttpsTransport(data['endpoint'])
+        result=transport._request(data['method'],data['path'],body=bytes.fromhex(data['body']),
+            credential=data['credential'],deadline=time.monotonic()+data['timeout'])
+    except TransportError as error:result=dict(transport_error=error.reason,status=error.status,retry_after=error.retry_after)
+    except Exception:result=dict(transport_error='network',status=0,retry_after=None)
+    sys.stdout.buffer.write(c.canonical(result))
+
+if __name__=='__main__' and sys.argv[1:]==['--request-worker']:_worker()

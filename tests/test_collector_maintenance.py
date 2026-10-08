@@ -42,3 +42,13 @@ class MaintenanceTest(unittest.TestCase):
         self.store.request_delete(self.creds['deletion_token'],now=NOW)
         maintain(self.store,self.journal,now=NOW+timedelta(days=90))
         with self.store.connect() as db:self.assertEqual(db.execute('SELECT count(*) FROM events').fetchone()[0],0)
+    def test_restore_remembers_identity_created_after_backup(self):
+        backup=self.backup()
+        late=self.store.register('c'*32,'d'*64,now=NOW)
+        self.store.ingest(late['ingestion_token'],[prompt(identity='c'*32)],now=NOW)
+        self.store.request_delete(late['deletion_token'],now=NOW)
+        restore(self.db,backup,self.journal,key=self.key,now=NOW)
+        recovered=CollectorStore(self.db,key=self.key,journal=self.journal)
+        recovered.register('c'*32,'d'*64,now=NOW)
+        with self.assertRaises(CollectorError):recovered.ingest(late['ingestion_token'],[prompt(identity='c'*32)],now=NOW)
+        self.assertEqual(recovered.deletion_status(late['deletion_token'])['status'],'completed')

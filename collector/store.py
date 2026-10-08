@@ -14,6 +14,11 @@ class CollectorError(Exception):
         super().__init__(reason)
 
 MAX_PRIMARY_BYTES=1024**3
+MAX_DAILY_EVENTS=10000
+MAX_INSTALLATIONS=100000
+
+def credential_token(key,label,identity,recovery):
+    return hmac.new(key,(label+':v1:'+identity+':'+recovery).encode(),hashlib.sha256).hexdigest()
 class CollectorStore:
     def __init__(self,database,*,key,journal=None):
         if not isinstance(key,bytes) or len(key)<32:raise CollectorError('key_configuration')
@@ -52,7 +57,7 @@ CREATE TABLE IF NOT EXISTS metadata(name TEXT PRIMARY KEY,value TEXT);
     def _ensure_ready(self):
         if self.ready.is_symlink() or not self.ready.exists():raise CollectorError('restore_not_ready')
     def _token(self,label,identity,recovery):
-        return hmac.new(self.key,(label+':v1:'+identity+':'+recovery).encode(),hashlib.sha256).hexdigest()
+        return credential_token(self.key,label,identity,recovery)
     @staticmethod
     def digest(token):return hashlib.sha256(token.encode()).hexdigest()
     def _auth(self,db,token,role):
@@ -70,6 +75,7 @@ CREATE TABLE IF NOT EXISTS metadata(name TEXT PRIMARY KEY,value TEXT);
             db.execute('BEGIN IMMEDIATE')
             row=db.execute('SELECT recovery FROM installations WHERE identity=?',(identity,)).fetchone()
             if row and not hmac.compare_digest(row['recovery'],recovery):raise CollectorError('identity_conflict',409)
+            if row is None and db.execute('SELECT count(*) FROM installations').fetchone()[0]>=MAX_INSTALLATIONS:raise CollectorError('capacity',503)
             if row is None:db.execute('INSERT INTO installations(identity,recovery,ingestion,deletion,created) VALUES (?,?,?,?,?)',(identity,recovery,self.digest(ing),self.digest(delete),now.isoformat()))
         return dict(installation_id=identity,ingestion_token=ing,deletion_token=delete)
     def ingest(self,credential,events,*,now):
@@ -90,7 +96,6 @@ CREATE TABLE IF NOT EXISTS metadata(name TEXT PRIMARY KEY,value TEXT);
             db.execute('BEGIN IMMEDIATE');principal=self._auth(db,credential,'ingestion');identity=principal['identity']
             payload_bytes=db.execute('SELECT coalesce(sum(length(body)),0) FROM events').fetchone()[0]
             received=db.execute('SELECT count(*) FROM events WHERE identity=? AND received>=?',(identity,now.date().isoformat())).fetchone()[0]
-            if received+len(valid)>10000:raise CollectorError('rate_limit',429)
             for e,body in valid:
                 eid=e['event_id']
                 if e['installation_id']!=identity:rejected.append(dict(event_id=eid,reason='identity_mismatch'));continue
@@ -103,8 +108,9 @@ CREATE TABLE IF NOT EXISTS metadata(name TEXT PRIMARY KEY,value TEXT);
                 sequence=e.get('prompt_sequence')
                 if sequence is not None and db.execute('SELECT 1 FROM events WHERE identity=? AND session=? AND sequence=?',(identity,e['session_key'],sequence)).fetchone():
                     rejected.append(dict(event_id=eid,reason='sequence_conflict'));continue
+                if received>=MAX_DAILY_EVENTS:raise CollectorError('rate_limit',429)
                 if payload_bytes+len(body)>MAX_PRIMARY_BYTES:raise CollectorError('capacity',503)
-                db.execute('INSERT INTO events VALUES (?,?,?,?,?,?,?,?)',(identity,eid,e['day'],now.isoformat(),e['session_key'],sequence,digest,body));payload_bytes+=len(body);accepted.append(eid)
+                db.execute('INSERT INTO events VALUES (?,?,?,?,?,?,?,?)',(identity,eid,e['day'],now.isoformat(),e['session_key'],sequence,digest,body));payload_bytes+=len(body);received+=1;accepted.append(eid)
         return dict(accepted=accepted,duplicate=duplicate,rejected=rejected)
     def request_delete(self,credential,*,now):
         self._ensure_ready()
@@ -113,7 +119,7 @@ CREATE TABLE IF NOT EXISTS metadata(name TEXT PRIMARY KEY,value TEXT);
             db.execute('UPDATE installations SET revoked=1,requested=coalesce(requested,?) WHERE identity=?',(now.isoformat(),row['identity']))
         # Independent durable journal integration is supplied by maintenance module.
         from collector.maintenance import append_tombstone
-        append_tombstone(self.journal,row['identity'],row['requested'] or now.isoformat())
+        append_tombstone(self.journal,row['identity'],row['requested'] or now.isoformat(),row['recovery'])
         return dict(installation_id=row['identity'],status='completed' if row['completed'] else 'pending')
     def deletion_status(self,credential):
         self._ensure_ready()

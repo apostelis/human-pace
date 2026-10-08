@@ -37,3 +37,15 @@ class CollectorTest(unittest.TestCase):
         for event,reason in [(prompt(day='2026-10-09'),'future'),(prompt(day='2026-09-30'),'expired'),({**prompt(),'note':'secret'},'invalid_event')]:
             receipt=self.store.ingest(self.creds['ingestion_token'],[event],now=NOW)
             self.assertEqual(receipt['rejected'][0]['reason'],reason)
+    def test_duplicate_delivery_still_acknowledged_at_daily_cap(self):
+        from unittest.mock import patch
+        event=prompt()
+        with patch('collector.store.MAX_DAILY_EVENTS',1):
+            self.store.ingest(self.creds['ingestion_token'],[event],now=NOW)
+            self.assertEqual(self.store.ingest(self.creds['ingestion_token'],[event],now=NOW)['duplicate'],[event['event_id']])
+            with self.assertRaises(CollectorError):self.store.ingest(self.creds['ingestion_token'],[prompt(sequence=2)],now=NOW)
+    def test_registration_storage_cap_preserves_existing_recovery(self):
+        from unittest.mock import patch
+        with patch('collector.store.MAX_INSTALLATIONS',1):
+            with self.assertRaises(CollectorError):self.store.register('c'*32,'d'*64,now=NOW)
+            self.assertEqual(self.creds,self.store.register('a'*32,'b'*64,now=NOW))

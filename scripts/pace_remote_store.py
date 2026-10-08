@@ -67,8 +67,9 @@ class RemoteStore:
                 raise ValueError()
             if not isinstance(value['ledger'],list) or len(value['ledger'])>MAX_IDENTITIES: raise ValueError()
             for item in value['ledger']:
-                if set(item)!={'identity','secret','recovery_key','credentials','pending_delete'}: raise ValueError()
+                if set(item)!={'identity','secret','recovery_key','credentials','pending_delete','recipient'}: raise ValueError()
                 if not c.HEX32.fullmatch(item['identity']) or not c.HEX64.fullmatch(item['secret']) or not c.HEX64.fullmatch(item['recovery_key']) or type(item['pending_delete']) is not bool: raise ValueError()
+                if not valid_release(item['recipient']):raise ValueError()
                 if item['credentials'] is not None: self._validate_credentials(item['identity'],item['credentials'])
             if value['enabled'] and (value['identity'] not in [x['identity'] for x in value['ledger']] or not value['consent_time'] or not isinstance(value['recipient'],dict)):raise ValueError()
             if value['consent_time']: local.utc(datetime.fromisoformat(value['consent_time']))
@@ -87,7 +88,7 @@ class RemoteStore:
         db=sqlite3.connect(str(path),timeout=0)
         try:
             db.executescript('''CREATE TABLE IF NOT EXISTS events (ordinal INTEGER PRIMARY KEY AUTOINCREMENT, event_id TEXT UNIQUE, identity TEXT, day TEXT, body BLOB, claim TEXT, lease TEXT);
-CREATE TABLE IF NOT EXISTS sessions (session TEXT PRIMARY KEY, sequence INTEGER, settings TEXT, observed TEXT);
+CREATE TABLE IF NOT EXISTS sessions (session TEXT PRIMARY KEY, sequence INTEGER, settings TEXT, observed TEXT, salt TEXT);
 CREATE TABLE IF NOT EXISTS counters (name TEXT PRIMARY KEY, value INTEGER);
 ''')
             with db: yield db
@@ -106,13 +107,15 @@ CREATE TABLE IF NOT EXISTS counters (name TEXT PRIMARY KEY, value INTEGER);
             p=self._prefs()
             if p['enabled'] and p['recipient']==release and not p['suspended']:return {'identity':p['identity'],'enabled':True}
             if len(p['ledger'])>=MAX_IDENTITIES:raise RemoteError('Delete prior sharing identities before enabling again.')
+            p.update(enabled=False,generation=p['generation']+1)
+            self._save(p)
+            with self._db() as db: db.execute('DELETE FROM events');db.execute('DELETE FROM sessions')
             identity=secrets.token_hex(16)
-            p['ledger'].append(dict(identity=identity,secret=secrets.token_hex(32),recovery_key=secrets.token_hex(32),credentials=None,pending_delete=False))
-            p.update(enabled=True,generation=p['generation']+1,choice='enabled',session_notice=True,
+            p['ledger'].append(dict(identity=identity,secret=secrets.token_hex(32),recovery_key=secrets.token_hex(32),credentials=None,pending_delete=False,recipient=dict(release)))
+            p.update(enabled=True,choice='enabled',session_notice=True,
                      identity=identity,consent_time=local.utc(now).isoformat(),recipient=dict(release),
                      suspended=False,retry_count=0,retry_at=None)
             self._save(p)
-            with self._db() as db: db.execute('DELETE FROM events');db.execute('DELETE FROM sessions')
             return {'identity':identity,'enabled':True}
     def _disable_locked(self,now):
         p=self._prefs();p.update(enabled=False,generation=p['generation']+1,choice='off',session_notice=True)
@@ -143,19 +146,24 @@ CREATE TABLE IF NOT EXISTS counters (name TEXT PRIMARY KEY, value INTEGER);
             for event in events:
                 if local.validate_event(event) is None:continue
                 if datetime.fromisoformat(event['timestamp'])<datetime.fromisoformat(p['consent_time']):continue
-                key=event['session_key'];seq=None;previous=None
+                key=event['session_key'];seq=None;previous=None;session_secret=item['secret']
                 if key:
-                    state=db.execute('SELECT sequence,settings FROM sessions WHERE session=?',(key,)).fetchone()
-                    if state:seq,previous=state[0],json.loads(state[1])
-                    elif db.execute('SELECT count(*) FROM sessions').fetchone()[0]>=MAX_SESSIONS:
+                    state=db.execute('SELECT sequence,settings,salt FROM sessions WHERE session=?',(key,)).fetchone()
+                    if state:
+                        try:
+                            previous=json.loads(state[1]);seq=state[0];session_secret=state[2]
+                            if not local.valid_config(previous) or type(seq) is not int or not 0<=seq<2**63-1 or not c.HEX64.fullmatch(session_secret):raise ValueError()
+                        except (ValueError,TypeError):
+                            db.execute('DELETE FROM sessions WHERE session=?',(key,));state=None;previous=None
+                    if not state and db.execute('SELECT count(*) FROM sessions').fetchone()[0]>=MAX_SESSIONS:
                         key=None;event={**event,'session_key':None}
                         if event['event']=='session_observed':continue
                         self._count(db,'unassigned')
-                    else:seq=0
+                    elif not state:seq=0;session_secret=secrets.token_hex(32)
                 if key and event['event']=='prompt_observed':seq+=1
-                remote=project(event,identity=item['identity'],secret=bytes.fromhex(item['secret']),sequence=seq,previous=previous)
-                if key and 'settings' in event:
-                    db.execute('INSERT INTO sessions VALUES (?,?,?,?) ON CONFLICT(session) DO UPDATE SET sequence=excluded.sequence, settings=excluded.settings,observed=excluded.observed',(key,seq or 0,json.dumps(event['settings']),now.isoformat()))
+                remote=project(event,identity=item['identity'],secret=bytes.fromhex(session_secret),sequence=seq,previous=previous)
+                if key and 'settings' in event and (event['event'] != 'session_observed' or previous is None):
+                    db.execute('INSERT INTO sessions VALUES (?,?,?,?,?) ON CONFLICT(session) DO UPDATE SET sequence=excluded.sequence, settings=excluded.settings,observed=excluded.observed,salt=excluded.salt',(key,seq or 0,json.dumps(event['settings']),now.isoformat(),session_secret))
                 if remote is None:continue
                 body=c.encode_event(remote)
                 if len(body)>MAX_QUEUE_BYTES:continue

@@ -58,3 +58,43 @@ class QueueTest(unittest.TestCase):
         e=analytics.make_event('command_invoked',now=NOW-timedelta(seconds=1),integration='unknown',source='pace',operation='status',outcome='success')
         with self.local._lock(): self.assertFalse(self.store.enqueue_locked([e],now=NOW-timedelta(seconds=1)))
         self.assertEqual(self.store.status(now=NOW)['queued_count'],0)
+    def test_byte_cap_evicts_oldest_and_invalid_input_never_evicts(self):
+        self.enable();self.enqueue(operation='status');self.enqueue(operation='toggle')
+        with self.local._lock(),self.store._db() as db:
+            sizes=[n for n, in db.execute('SELECT length(body) FROM events ORDER BY ordinal')]
+        with patch.object(r,'MAX_QUEUE_BYTES',sum(sizes)):
+            self.enqueue(operation='rate')
+            data=json.loads(self.store.preview(now=NOW))['events']
+            self.assertEqual([e['operation'] for e in data],['toggle','rate'])
+            e=analytics.make_event('command_invoked',now=NOW,integration='unknown',source='pace',operation='status',outcome='success')
+            with self.local._lock():self.store.enqueue_locked([{**e,'note':'secret'}],now=NOW)
+            self.assertEqual(self.store.status(now=NOW)['queued_count'],2)
+    def test_expired_session_state_gets_new_remote_session_key(self):
+        self.enable()
+        def enqueue(when):
+            e=analytics.make_event('prompt_observed',now=when,integration='claude',source='hook',session_key='a'*64,cfg=pc.defaults(),config_source='commands',enabled=True)
+            with self.local._lock():self.store.enqueue_locked([e],now=when)
+            return json.loads(self.store.preview(now=when))['events'][-1]
+        first=enqueue(NOW);second=enqueue(NOW+timedelta(days=8))
+        self.assertNotEqual(first['session_key'],second['session_key'])
+        self.assertEqual(second['prompt_sequence'],1)
+    def test_each_identity_remembers_its_collection_destination(self):
+        self.enable();self.store.disable(now=NOW)
+        other={**RELEASE,'endpoint':'https://new.example.test'}
+        self.store.enable(now=NOW,local_enabled=True,release=other)
+        targets=self.store.deletion_targets(now=NOW)
+        self.assertEqual([x['recipient']['endpoint'] for x in targets],[RELEASE['endpoint'],other['endpoint']])
+    def test_overflow_incoming_batch_retains_newest_suffix(self):
+        self.enable()
+        events=[analytics.make_event('command_invoked',now=NOW,integration='unknown',source='pace',operation=operation,outcome='success') for operation in ('status','toggle','rate')]
+        with patch.object(r,'MAX_QUEUE_EVENTS',2),self.local._lock():self.store.enqueue_locked(events,now=NOW)
+        self.assertEqual([e['operation'] for e in json.loads(self.store.preview(now=NOW))['events']],['toggle','rate'])
+    def test_failed_enable_never_leaves_sharing_active(self):
+        from contextlib import contextmanager
+        @contextmanager
+        def unavailable():
+            raise r.RemoteError('Queue unavailable')
+            yield
+        with patch.object(self.store,'_db',unavailable):
+            with self.assertRaises(r.RemoteError):self.enable()
+        self.assertFalse(self.store.status(now=NOW)['enabled'])

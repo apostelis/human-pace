@@ -25,6 +25,9 @@ def run_share(args,*,now,store,local_enabled,release,transport=None):
                 "Sharing is best effort; local clear does not delete server data. /pace analytics share delete requests erasure.")
     # Explicit deletion disables sharing even if no endpoint is currently configured.
     if command=='delete':store.disable(now=now)
+    if command=='delete':
+        result=delete_all(store,transport,now=now)
+        return f"Sharing off. Deletion completed: {result['completed']}; pending: {result['pending']}; failed: {result['failed']}. Rerun /pace analytics share delete for pending or failed identities. Backups expire within 30 days."
     if not remote.valid_release(release):raise RemoteError('No collecting release destination is configured.')
     transport=transport or HttpsTransport(release['endpoint'])
     if command=='upload':

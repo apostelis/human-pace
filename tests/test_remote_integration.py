@@ -68,3 +68,38 @@ class IntegrationTest(unittest.TestCase):
         self.assertNotIn('Enable sharing',preview.render(pc.defaults()))
         page=preview.render(pc.defaults(),settings=True)
         self.assertIn('Enable sharing',page);self.assertIn('role="status"',page)
+    def test_complete_collector_lifecycle_response_loss_and_delete_all_epochs(self):
+        from collector.store import CollectorStore
+        from collector.service import handle,Limiter
+        from collector.maintenance import maintain
+        from pace_remote_transport import upload,delete_all,TransportError
+        collector=CollectorStore(self.root.parent/'collector.sqlite3',key=b'k'*32)
+        limiter=Limiter();local=self
+        class Adapter:
+            def __init__(self):self.drop=True
+            def request(self,method,path,*,body,credential,deadline):
+                headers={'Content-Type':'application/json','Content-Length':str(len(body))}
+                if credential:headers['Authorization']='Bearer '+credential
+                status,head,raw=handle(collector,method,path,headers=headers,body=body,now=NOW,limiter=limiter)
+                if status!=200:raise TransportError('http',status=status)
+                if path=='/v1/events' and self.drop:self.drop=False;raise ConnectionError()
+                return json.loads(raw)
+        transport=Adapter();self.record_prompt();self.enable();self.record_prompt()
+        self.assertEqual(upload(self.remote,transport,now=NOW)['state'],'retry')
+        from datetime import timedelta
+        result=upload(self.remote,transport,now=NOW+timedelta(minutes=2))
+        self.assertEqual(result['duplicate'],1)
+        self.assertEqual(len(collector.live_events(start=NOW.date(),end=NOW.date())),1)
+        self.remote.disable(now=NOW);self.enable();self.record_prompt()
+        upload(self.remote,transport,now=NOW)
+        self.assertEqual(delete_all(self.remote,transport,now=NOW)['pending'],2)
+        self.assertEqual(collector.live_events(start=NOW.date(),end=NOW.date()),[])
+        maintain(collector,collector.journal,now=NOW)
+        self.assertEqual(delete_all(self.remote,transport,now=NOW)['completed'],2)
+        self.assertEqual(self.remote.status(now=NOW)['prior_identities'],0)
+    def test_resumed_session_configuration_change_is_queued(self):
+        self.enable();self.record_prompt()
+        changed={**pc.defaults(),'length':300}
+        self.local.observe(event='SessionStart',cfg=changed,config_source='commands',session_id='session',now=NOW)
+        events=json.loads(self.remote.preview(now=NOW))['events']
+        self.assertEqual(sum(e['event']=='config_observed_changed' for e in events),1)

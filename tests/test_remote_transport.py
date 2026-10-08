@@ -59,3 +59,38 @@ class TransportTest(unittest.TestCase):
     def test_reject_non_https_and_endpoint_credentials(self):
         for url in ('http://collector.test','https://user:pass@collector.test','https://collector.test/?x=1'):
             with self.assertRaises(r.RemoteError):t.HttpsTransport(url)
+    def test_https_redirect_bad_tls_and_slow_response(self):
+        import ssl
+        import pace_remote_contract as c
+        class Socket:
+            def settimeout(self,value):self.timeout=value
+        class Response:
+            status=200;fp=None
+            def getheader(self,name,default=None):return default
+            def read1(self,n):clock[0]=20;return b'{}'
+        class Connection:
+            def __init__(self,*args,**kw):self.sock=Socket()
+            def connect(self):pass
+            def request(self,*args,**kw):pass
+            def getresponse(self):return response
+            def close(self):pass
+        clock=[0];response=Response()
+        with patch.object(t.http.client,'HTTPSConnection',Connection):
+            transport=t.HttpsTransport(RELEASE['endpoint'],clock=lambda:clock[0])
+            with self.assertRaises(t.TransportError):transport._request('POST','/v1/events',body=b'{}',credential=None,deadline=10)
+            clock[0]=0;response.status=302
+            with self.assertRaises(t.TransportError) as caught:transport._request('POST','/v1/events',body=b'{}',credential=None,deadline=10)
+            self.assertEqual(caught.exception.status,302)
+        with patch.object(t.http.client,'HTTPSConnection',side_effect=ssl.SSLError('bad certificate')):
+            with self.assertRaises(t.TransportError):t.HttpsTransport(RELEASE['endpoint'])._request('POST','/v1/events',body=b'{}',credential=None,deadline=t.time.monotonic()+10)
+    def test_worker_hard_deadline_terminates_stalled_dns_or_headers(self):
+        import subprocess
+        import sys
+        import time
+        original=subprocess.Popen
+        def stalled(*args,**kw):return original([sys.executable,'-c','import time; time.sleep(30)'],**kw)
+        start=time.monotonic()
+        with patch.object(t.subprocess,'Popen',stalled):
+            with self.assertRaises(t.TransportError):
+                t.HttpsTransport(RELEASE['endpoint']).request('POST','/v1/events',body=b'{}',credential=None,deadline=start+.15)
+        self.assertLess(time.monotonic()-start,1)

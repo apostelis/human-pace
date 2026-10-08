@@ -9,7 +9,7 @@ import tempfile
 from datetime import datetime, timedelta, timezone
 from contextlib import closing
 from pathlib import Path
-from collector.store import CollectorError
+from collector.store import CollectorError, credential_token
 import pace_remote_contract as c
 
 def _atomic(path,data):
@@ -33,8 +33,10 @@ def _scan(journal):
             for raw in f:
                 if len(raw)>4096 or not raw.endswith(b'\n'):raise ValueError()
                 item=c.strict_json(raw,max_bytes=4096)
-                if set(item)!={'identity','requested','key_version'} or not c.HEX32.fullmatch(item['identity']) or item['key_version']!=1:raise ValueError()
-                datetime.fromisoformat(item['requested']);digest.update(raw);items.append(item)
+                if set(item)!={'identity','requested','key_version','recovery_digest'} or not c.HEX32.fullmatch(item['identity']) or item['key_version']!=1:raise ValueError()
+                datetime.fromisoformat(item['requested'])
+                if not c.HEX64.fullmatch(item['recovery_digest']):raise ValueError()
+                digest.update(raw);items.append(item)
         return items,digest.hexdigest()
     except (OSError,ValueError,TypeError,KeyError):raise CollectorError('deletion_journal_unavailable') from None
 
@@ -47,7 +49,7 @@ def _verify(journal):
     except (OSError,ValueError):raise CollectorError('stale_deletion_journal') from None
     return items
 
-def append_tombstone(journal,identity,requested):
+def append_tombstone(journal,identity,requested,recovery_digest):
     journal=Path(journal)
     try:
         if journal.is_symlink():raise OSError()
@@ -61,7 +63,7 @@ def append_tombstone(journal,identity,requested):
             if identity not in {x['identity'] for x in items}:
                 fd=os.open(str(journal),os.O_CREAT|os.O_APPEND|os.O_WRONLY|getattr(os,'O_NOFOLLOW',0),0o600)
                 with os.fdopen(fd,'ab') as f:
-                    f.write(c.canonical(dict(identity=identity,requested=requested,key_version=1))+b'\n');f.flush();os.fsync(f.fileno())
+                    f.write(c.canonical(dict(identity=identity,requested=requested,key_version=1,recovery_digest=recovery_digest))+b'\n');f.flush();os.fsync(f.fileno())
             elif journal.exists():
                 # A prior fsync/checkpoint failure must be repaired durably on retry.
                 with journal.open('rb') as f:os.fsync(f.fileno())
@@ -71,8 +73,8 @@ def append_tombstone(journal,identity,requested):
 
 def maintain(store,journal,*,now):
     # Journal every revoked identity before marking any primary deletion completed.
-    with store.connect() as db:revoked=db.execute('SELECT identity,requested FROM installations WHERE revoked=1').fetchall()
-    for item in revoked:append_tombstone(journal,item['identity'],item['requested'])
+    with store.connect() as db:revoked=db.execute('SELECT identity,requested,recovery FROM installations WHERE revoked=1').fetchall()
+    for item in revoked:append_tombstone(journal,item['identity'],item['requested'],item['recovery'])
     cutoff=(now.date()-timedelta(days=89)).isoformat()
     with store.connect() as db:
         db.execute('BEGIN IMMEDIATE')
@@ -94,7 +96,11 @@ def restore(database,backup,journal,*,key,now):
             saved=target.execute("SELECT value FROM metadata WHERE name='key'").fetchone()
             if not saved or saved[0]!=hashlib.sha256(key).hexdigest():raise CollectorError('key_configuration')
             for item in items:
-                target.execute('UPDATE installations SET revoked=1,requested=coalesce(requested,?),completed=? WHERE identity=?',(item['requested'],now.isoformat(),item['identity']))
+                identity=item['identity'];recovery=item['recovery_digest']
+                ingestion=hashlib.sha256(credential_token(key,'ingestion',identity,recovery).encode()).hexdigest()
+                deletion=hashlib.sha256(credential_token(key,'deletion',identity,recovery).encode()).hexdigest()
+                target.execute('INSERT INTO installations(identity,recovery,ingestion,deletion,revoked,created,requested,completed) VALUES (?,?,?,?,1,?,?,?) ON CONFLICT(identity) DO UPDATE SET revoked=1,requested=coalesce(requested,excluded.requested),completed=excluded.completed',
+                    (identity,recovery,ingestion,deletion,item['requested'],item['requested'],now.isoformat()))
             target.execute('DELETE FROM events WHERE identity IN (SELECT identity FROM installations WHERE revoked=1) OR day<?',((now.date()-timedelta(days=89)).isoformat(),))
             if target.execute('PRAGMA integrity_check').fetchone()[0]!='ok' or target.execute('PRAGMA foreign_key_check').fetchall():raise CollectorError('restore_integrity')
             target.commit()
