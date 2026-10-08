@@ -1,0 +1,77 @@
+name: Bug report
+description: Report a problem with Human Pace.
+title: "[Bug]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please search existing issues before submitting. Remove private information from examples, screenshots, and logs.
+  - type: dropdown
+    id: host
+    attributes:
+      label: Where does the bug happen?
+      options:
+        - Claude Code
+        - Claude Desktop
+        - Codex CLI
+        - Codex desktop
+        - ChatGPT
+        - Other (describe below)
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Human Pace version
+      description: Plugin version or commit, if known. Enter "unknown" if you cannot find it.
+      placeholder: "e.g. 0.10.0 or a commit hash"
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment and setup
+      description: Include your operating system, host app version, installation method, and Python version if relevant.
+      placeholder: |
+        OS:
+        Host app version:
+        Installation method:
+        Python version (if applicable):
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+      description: Include the commands or prompt and relevant /pace settings. For Claude, mention whether configuration uses commands or native mode.
+      placeholder: |
+        1. Set ...
+        2. Run or ask ...
+        3. Observe ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What did you expect to happen?
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: What happened instead? You can paste a short reply example or attach screenshots here.
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs or error messages
+      description: Optional. Remove secrets and personal information before pasting.
+      render: text
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Optional. Include workarounds or anything else that helps explain the bug.
