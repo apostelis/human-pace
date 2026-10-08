@@ -42,3 +42,29 @@ class IntegrationTest(unittest.TestCase):
         with patch.object(r.RemoteStore,'enqueue_locked',side_effect=OSError('secret')):
             self.assertTrue(self.record_prompt())
         self.assertGreater(len(self.local.read(now=NOW,days=1)['events']),0)
+    def test_session_invitation_once_and_skips_headless(self):
+        hook={'hook_event_name':'SessionStart','session_id':'new-session'}
+        def run(env=None):
+            output=io.StringIO();inject.main(io.StringIO(json.dumps(hook)),output,env=env or {'HUMAN_PACE':'1'})
+            return output.getvalue()
+        self.assertIn('Help improve Human Pace',run())
+        self.assertNotIn('Help improve Human Pace',run())
+        self.assertNotIn('Help improve Human Pace',run({'HUMAN_PACE':'0'}))
+    def test_settings_consent_route_and_foreign_request_rejection(self):
+        import http.client
+        import threading
+        server=preview.create_server('token');thread=threading.Thread(target=server.serve_forever,daemon=True);thread.start()
+        self.addCleanup(lambda: (server.shutdown(),server.server_close(),thread.join()))
+        def request(action,origin=None):
+            conn=http.client.HTTPConnection('127.0.0.1',server.server_port,timeout=2)
+            headers={'Content-Type':'application/json'}
+            if origin:headers['Origin']=origin
+            conn.request('POST','/token/sharing',json.dumps(action),headers)
+            response=conn.getresponse();data=response.read();conn.close();return response.status,json.loads(data)
+        status,_=request({'action':'enable'},'https://evil.test');self.assertEqual(status,403)
+        status,_=request({'action':'enable'});self.assertEqual(status,200)
+        self.assertTrue(self.remote.status(now=NOW)['enabled'])
+        status,_=request({'action':'never','extra':'bad'});self.assertEqual(status,400)
+        self.assertNotIn('Enable sharing',preview.render(pc.defaults()))
+        page=preview.render(pc.defaults(),settings=True)
+        self.assertIn('Enable sharing',page);self.assertIn('role="status"',page)

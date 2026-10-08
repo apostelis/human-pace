@@ -506,6 +506,17 @@ def recording_notice() -> str:
         enabled = default_store().preferences()['enabled']
     except Exception:
         return "Local analytics status unavailable. Recording is on by default; nothing is uploaded. Check /pace analytics."
+    remote_notice = ''
+    try:
+        from pace_remote_store import RemoteStore
+        sharing = RemoteStore(default_store().root).status(now=datetime.now(timezone.utc))
+        if sharing['enabled'] or sharing['prior_identities']:
+            state = 'suspended' if sharing['suspended'] else 'on' if sharing['enabled'] else 'off'
+            remote_notice = f" Sharing: {state}; manual uploads. Previously uploaded data may remain. Check /pace analytics share."
+    except Exception:
+        remote_notice = ' Sharing status unavailable; check /pace analytics share.'
+    if remote_notice:
+        return f"Local analytics: {'on (on by default)' if enabled else 'off'}. Prompt content and rating notes are excluded." + remote_notice
     if enabled:
         return ("Local analytics: on (on by default). Usage, settings, and numeric ratings stay on this machine; "
                 "nothing is uploaded. Prompt content and rating notes are excluded. Disable: /pace analytics off.")
