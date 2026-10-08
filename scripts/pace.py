@@ -28,10 +28,11 @@ USAGE = """Usage:
   /pace report                 ratings and 30-day usage summary
   /pace report usage|compare [days]  local usage or configuration comparisons (1-365)
   /pace analytics               recording status and local storage details
-  /pace analytics on|off        enable or stop local recording
+  /pace analytics on|off        enable or stop local recording (default: on)
   /pace analytics retention <days>  retain 1-365 days (default 90)
   /pace analytics export        print retained, validated events as JSONL
   /pace analytics clear         delete analytics history; preserve ratings and preferences
+Local usage recording is on by default; nothing is uploaded. Disable with /pace analytics off.
 Notes cannot contain double quotes, backticks or $."""
 
 SWITCH_NAMES = {name.lower(): name for name in pace_config.SWITCHES}
@@ -227,7 +228,7 @@ def _analytics_command(rest: List[str], now: datetime) -> str:
         prefs = store.preferences()
         data = store.read(now=now, days=365)
         d = data["diagnostics"]
-        return (f"Local analytics: {'on' if prefs['enabled'] else 'off'}\nStorage: {store.root}\n"
+        return (f"{analytics.recording_notice()}\nStorage: {store.root}\n"
                 f"Retention: {prefs['retention_days']} days (lazy cleanup)\n"
                 f"Retained records: {d['first'] or 'none'} to {d['last'] or 'none'}\n"
                 f"Capped days: {', '.join(d['capped_days']) or 'none'}\n"
@@ -287,7 +288,7 @@ def run(args: List[str], now: Optional[datetime] = None) -> str:
         result.events.append({"event": "settings_error", "category": "config_read_or_validation", "invalid_fields": []})
     analytics.record_action(result.operation, result.outcome, source="pace", cfg=cfg,
                             config_source="native" if native else "commands", now=now, events=result.events)
-    return result.text
+    return result.text + ("\n" + analytics.recording_notice() if not args else "")
 
 
 def main(argv: Optional[List[str]] = None) -> int:

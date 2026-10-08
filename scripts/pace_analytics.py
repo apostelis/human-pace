@@ -1,4 +1,4 @@
-"""Local-only usage events. No recording occurs until explicitly enabled."""
+"""Local-only usage events. Recording defaults to on; explicit opt-out persists."""
 from __future__ import annotations
 
 import hashlib
@@ -253,7 +253,7 @@ class AnalyticsStore:
         try:
             prefs = json.loads(_small_read(self.root / 'preferences.json'))
         except FileNotFoundError:
-            return {'enabled': False, 'retention_days': 90}
+            return {'enabled': True, 'retention_days': 90}
         except (OSError, ValueError, TypeError, RecursionError):
             raise AnalyticsError('Invalid or unreadable analytics preferences.') from None
         if (not isinstance(prefs, dict) or set(prefs) != {'enabled', 'retention_days'}
@@ -481,3 +481,16 @@ def record_action(operation: str, outcome: str, *, source: str, cfg: Optional[di
         store.record(batch, now=now)
     except Exception:
         pass
+
+
+def recording_notice() -> str:
+    """Read-only disclosure for status/settings; storage errors cannot break either."""
+    try:
+        enabled = default_store().preferences()['enabled']
+    except Exception:
+        return "Local analytics status unavailable. Recording is on by default; nothing is uploaded. Check /pace analytics."
+    if enabled:
+        return ("Local analytics: on (on by default). Usage, settings, and numeric ratings stay on this machine; "
+                "nothing is uploaded. Prompt content and rating notes are excluded. Disable: /pace analytics off.")
+    return ("Local analytics: off. Nothing is uploaded. Enable: /pace analytics on. "
+            "Inspect or clear retained history with /pace analytics.")

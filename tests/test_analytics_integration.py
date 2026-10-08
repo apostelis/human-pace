@@ -271,3 +271,22 @@ class IntegrationTest(unittest.TestCase):
         self.assertIn('Saved', message)
         self.assertEqual(pc.load_config()[0], pc.defaults())
         self.assertEqual(sum(e['event'] == 'config_saved' for e in self.events()), 0)
+
+    def test_fresh_install_records_and_discloses_local_default(self):
+        fresh = self.root / 'fresh-analytics'
+        with patch.dict(os.environ, {'HUMAN_PACE_ANALYTICS_DIR': str(fresh)}):
+            status = pace.run([])
+            self.assertIn('on by default', status)
+            self.assertIn('nothing is uploaded', status)
+            self.assertIn('/pace analytics off', status)
+            events = a.AnalyticsStore(fresh).read(now=datetime.now(timezone.utc), days=30)['events']
+            self.assertEqual(sum(e['event'] == 'command_invoked' for e in events), 1)
+            html = preview.render(pc.defaults())
+            self.assertIn('on by default', html)
+            self.assertIn('/pace analytics off', html)
+            pace.run(['analytics', 'off'])
+            pace.run(['reset'])
+            status = pace.run([])
+            self.assertIn('Local analytics: off', status)
+            self.assertIn('Local analytics: off', preview.render(pc.defaults()))
+            self.assertFalse(a.AnalyticsStore(fresh).preferences()['enabled'])

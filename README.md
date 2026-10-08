@@ -5,6 +5,10 @@
 
 ## Install for Claude Code
 
+Local usage recording is **on by default** in the Claude integration. Events stay
+on your machine; nothing is uploaded. Disable it with `/pace analytics off`.
+See [local usage analytics](#local-usage-analytics) for recorded fields and controls.
+
 ```
 /plugin marketplace add apostelis/human-pace
 /plugin install human-pace@human-pace
@@ -44,16 +48,17 @@
 
 ## Local usage analytics
 
-Enable recording explicitly, then use human-pace normally:
+Local recording starts automatically when you use the supported integration. Inspect it with:
 
 ```text
-/pace analytics on
+/pace analytics
 /pace report usage 30
 /pace report compare 30
 ```
 
-Recording is off by default. Everything stays on this machine; no events are
-uploaded. The usage report shows command invocations, enabled/off prompts,
+Recording is on by default. An explicit `/pace analytics off` choice persists
+across restarts, formatting resets, and history clears. Everything stays on this
+machine; no events are uploaded. The usage report shows command invocations, enabled/off prompts,
 observed and active sessions, configuration shares, repeat usage across days,
 saved edits, observed changes, and settings errors. The comparison report shows
 configuration transitions, ratings with sample counts, and setting associations
@@ -69,6 +74,7 @@ such as the share of prompts with chunks enabled for each bionic approach.
 | `/pace report usage [days]` | Detailed usage; default 30 days, range 1–365 |
 | `/pace report compare [days]` | Configuration comparisons over the same kind of window |
 
+To stop recording, use `/pace analytics off`; to resume, use `/pace analytics on`.
 The controls also work when native formatting options are selected. `/pace reset`
 resets formatting only. The existing rating log remains the source of the first
 part of `/pace report`; analytics comparisons use ratings recorded while analytics
@@ -111,7 +117,24 @@ controls/reports; readers exclude expired records before cleanup. Disabling keep
 history until it expires or you clear it. Local locking requires macOS/Linux
 `fcntl`; unsupported platforms report that limitation for controls and skip recording.
 
-Remote gathering is a separate future phase, after validating these metrics locally.
+### Why measure an open-source plugin?
+
+Open source still needs a business case for ongoing development and maintenance.
+These metrics help test whether human-pace delivers recurring value and where
+further investment is justified:
+
+| Decision | Evidence to examine |
+|---|---|
+| Is it used repeatedly? | Active sessions, active days, and return to configurations |
+| Which features deserve investment? | Configuration exposure, common combinations, transitions, and reversions |
+| Are users finding value? | Ratings alongside repeat usage and sample sizes |
+| Where is support effort needed? | Settings-error observations and failed command outcomes |
+
+Local data validates the measurements and individual usage patterns. Maintainers
+cannot see it automatically, so this phase cannot establish community adoption,
+revenue, or willingness to pay. A later gathering phase can support broader
+adoption and retention evidence; maintenance costs and commercial demand still
+need separate evidence. Remote gathering remains a separate future phase.
 
 ## Configure through Claude’s plugin panel
 

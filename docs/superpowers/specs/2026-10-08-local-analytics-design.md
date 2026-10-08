@@ -1,7 +1,7 @@
 # Local usage analytics
 
 Date: 2026-10-08
-Status: Proposed for review
+Status: Approved; default-on local recording amendment requested 2026-10-08
 
 ## Purpose and scope
 
@@ -9,7 +9,11 @@ Establish useful, trustworthy metrics on one machine before adding collection
 from other installations. The approved direction is to measure invocations,
 configuration frequency, configuration relationships, repeat usage, and ratings.
 Success means a user can explain which settings they actually use, how often
-they change them, and how those choices relate to their own ratings.
+they change them, and how those choices relate to their own ratings. Open-source
+sustainability also requires a business case: validate recurring use, prioritize
+features, and understand support needs. Local-only data supports metric validation
+and individual evidence, not claims of community adoption or willingness to pay.
+Later gathering, maintenance costs, and commercial demand require separate evidence.
 
 Phase one uses local storage and reports. Phase two may add opt-in collection
 using the same versioned event definitions. No collection endpoint, uploader,
@@ -32,8 +36,10 @@ is unavailable rather than zero. The experimental MCP app is outside this change
 
 ## User controls
 
-Local recording is explicitly enabled with `/pace analytics on`; it defaults to
-off. This is a proposed default, intended to make the recording period explicit.
+Local recording defaults to on, as requested by the project owner. An explicit
+`/pace analytics off` preference remains authoritative across restarts and updates.
+Disclose the default, recorded data categories, local-only storage, and opt-out
+command in installation guidance, command help/status, reports, and browser settings.
 Analytics preferences are separate from formatting preferences, so `/pace reset`
 and native formatting options do not reset analytics choices.
 
@@ -52,7 +58,8 @@ and native formatting options do not reset analytics choices.
 Report windows accept 1–365 days and disclose when retained data covers less.
 Reports and analytics control/export commands do not record themselves. They
 must work in native configuration mode as well as command configuration mode.
-Empty reports explain how to enable recording and show coverage limitations.
+Empty reports explain the current recording state and show coverage limitations;
+only disabled recording prompts users to enable it.
 
 ## Event contract
 
@@ -214,7 +221,9 @@ An analytics recording error must never recursively generate an analytics event.
 
 ## Acceptance and verification
 
-1. With recording off, invoking normal plugin flows creates no analytics events.
+1. With no analytics preferences, ordinary supported usage records locally. With
+   recording explicitly off, normal plugin flows create no analytics events.
+   Reset and clear preserve that preference; status and settings disclose it.
 2. With recording on, two eligible prompts create two observations even when the
    second emits no rules. A resume/compaction keeps the distinct session count at one.
 3. A save A→B creates one save event; the next observed prompt creates one observed

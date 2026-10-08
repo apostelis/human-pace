@@ -80,8 +80,9 @@ class StoreTest(unittest.TestCase):
         return self.store.read(now=NOW + timedelta(seconds=10), days=30)['events']
 
     def test_disabled_then_enabled_recording(self):
+        self.store.configure(enabled=False)
         self.assertFalse(self.store.record([self.event()], now=NOW))
-        self.assertFalse(self.root.exists())
+        self.assertEqual(self.events(), [])
         self.enable()
         self.assertTrue(self.store.record([self.event()], now=NOW))
         self.assertEqual(len(self.events()), 1)
@@ -252,3 +253,12 @@ print(int(s.record([e], now=n)))
                 config_source='commands', session_id='s1', now=NOW))
         self.assertEqual(sum(e['event'] == 'prompt_observed' for e in self.events()), 2)
         self.assertEqual(sum(e['event'] == 'config_observed_changed' for e in self.events()), 0)
+
+    def test_fresh_store_records_by_default_and_explicit_off_persists(self):
+        self.assertTrue(self.store.record([self.event()], now=NOW))
+        self.assertEqual(len(self.events()), 1)
+        self.store.configure(enabled=False)
+        reopened = a.AnalyticsStore(self.root)
+        self.assertFalse(reopened.record([self.event()], now=NOW))
+        reopened.clear(now=NOW)
+        self.assertFalse(a.AnalyticsStore(self.root).preferences()['enabled'])

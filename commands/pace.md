@@ -1,5 +1,5 @@
 ---
-description: Show or change human-pace switches, rate the current setting, or inspect local usage analytics
+description: Show or change human-pace switches, rate settings, or inspect local analytics (recording on by default; nothing uploaded)
 argument-hint: "[<switch> on|off | bionic third|vowels|consonants|third+anchor | experimental gradient off|color|weight|both | anchor-trigger <n> | length <n> | drift-guard <n> | preset focus|light|off | on | off | reset | rate <1-5> [note] | report [usage|compare [days]] | analytics [on|off|retention <days>|export|clear]]"
 allowed-tools: Bash(python3:*)
 ---

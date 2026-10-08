@@ -36,7 +36,8 @@ class ReportTest(unittest.TestCase):
         self.assertEqual(summary['transitions'], {})
         self.assertIsNone(summary['changes_per_active_session'])
         empty = r.summarize([], now=NOW, days=30)
-        self.assertIn('analytics on', r.render_usage(empty, {}))
+        self.assertIn('on by default', r.render_usage(empty, {'enabled': True}))
+        self.assertIn('analytics on', r.render_usage(empty, {'enabled': False}))
 
     def test_time_window_boundary_and_days_are_utc(self):
         events = [self.prompt(pc.defaults(), now=NOW - timedelta(days=30)),

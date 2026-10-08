@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Open a local formatting preview or a settings page with Save."""
 import argparse
+import html
 import json
 import os
 from pathlib import Path
@@ -20,7 +21,7 @@ def render(cfg):
     template = (Path(__file__).resolve().parent.parent / 'preview' / 'index.html').read_text()
     # JSON is embedded in script text, where HTML closing tags must be escaped.
     passages = json.loads((Path(__file__).resolve().parent.parent / 'preview' / 'passages.json').read_text())
-    return (template.replace('__CONFIG__', json.dumps(cfg).replace('<', '\\u003c'))
+    return (template.replace('__ANALYTICS_NOTICE__', html.escape(analytics.recording_notice())).replace('__CONFIG__', json.dumps(cfg).replace('<', '\\u003c'))
             .replace('__PASSAGES__', json.dumps(passages).replace('<', '\\u003c')))
 
 

@@ -32,7 +32,7 @@ class PaceTestBase(unittest.TestCase):
 
 class ShowAndChangeTest(PaceTestBase):
     def test_should_show_defaults_when_no_config(self):
-        self.assertEqual(pace.run([]),
+        self.assertEqual(pace.run([]).splitlines()[0],
                          "human-pace: bionic on (third) · answerFirst on · chunks on · actionMarkers on · length 200"
                          " · drift guard every 10 prompts")
 

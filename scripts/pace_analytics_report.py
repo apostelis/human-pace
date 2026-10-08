@@ -125,11 +125,16 @@ def _header(summary, diagnostics):
              'Claude hook coverage only; Codex/ChatGPT skill usage is unavailable.',
              'Best-effort observations of configured usage; prompt counts are hook deliveries.']
     first, last = coverage['first'], coverage['last']
-    lines.append(f'Observed records: {first} to {last}' if first else 'No records in this window. Enable with /pace analytics on.')
+    if first:
+        lines.append(f'Observed records: {first} to {last}')
+    elif diagnostics.get('enabled', True):
+        lines.append('No records in this window. Local recording is on by default; use human-pace to collect usage.')
+    else:
+        lines.append('No records in this window. Recording is off; enable with /pace analytics on.')
     if diagnostics.get('retention_days', 365) < diagnostics.get('requested_days', 0):
         lines.append(f"Window limited by {diagnostics['retention_days']}-day retention.")
     if 'enabled' in diagnostics:
-        lines.append('Recording: ' + ('on' if diagnostics['enabled'] else 'off'))
+        lines.append('Local recording: ' + ('on (on by default)' if diagnostics['enabled'] else 'off') + '; nothing is uploaded. Disable: /pace analytics off.')
     for key in ('malformed', 'unsupported', 'duplicates'):
         if diagnostics.get(key):
             lines.append(f"Skipped {key} records: {diagnostics[key]}")

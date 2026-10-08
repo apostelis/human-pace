@@ -13,7 +13,7 @@
 ## Global Constraints
 
 - Use Python 3.9+ standard library only.
-- Local recording is explicitly enabled with `/pace analytics on`; it defaults to off.
+- Local recording defaults to on; explicit `/pace analytics off` preferences persist (owner amendment, 2026-10-08).
 - Retention accepts 1–365 days; default 90. Report windows accept 1–365 days; default 30.
 - Bound each serialized event to 16 KiB and each UTC day's event file to 10 MiB.
 - Create private directories/files where supported (0700/0600).
@@ -150,10 +150,11 @@ digest = hashlib.sha256(payload.encode("utf-8")).hexdigest()
 ```python
 def test_disabled_store_creates_no_events(self):
     store = analytics.AnalyticsStore(self.root)
+    store.configure(enabled=False)
     event = analytics.make_event("command_invoked", now=self.now,
         integration="unknown", source="pace", operation="status", outcome="success")
     self.assertFalse(store.record([event], now=self.now))
-    self.assertFalse(self.root.exists())
+    self.assertEqual(store.read(now=self.now, days=30)["events"], [])
     store.configure(enabled=True)
     self.assertTrue(store.record([event], now=self.now))
     self.assertEqual(len(store.read(now=self.now, days=30)["events"]), 1)
@@ -410,3 +411,13 @@ execution-method selection.
 - Tests exercise native configuration through a simulated CLI writing real temporary
   settings files. A live Claude installation was not used for verification.
 - Personal analytics recording was not enabled; remote gathering remains deferred.
+
+
+## Default-on amendment — 2026-10-08
+
+The owner requested local recording on by default to support metrics and the
+project's business case. Explicit opt-out is preserved. Added visible disclosures
+in installation docs, help, status, reports, and browser settings, plus a rationale
+linking usage, configuration choices, ratings, and errors to maintenance decisions.
+Community adoption and commercial demand are not inferred from local-only data.
+Tests cover automatic first-use recording, disclosure, and persistent opt-out.
