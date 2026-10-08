@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+- Add local analytics enabled by default for command invocations, configured prompt usage,
+  sessions, settings saves/changes, and numeric ratings.
+- Disclose local recording in installation guidance, command help/status, reports,
+  and the browser settings page; preserve explicit opt-out preferences.
+- Add usage and configuration comparison reports, with local export, retention,
+  disable, and clear controls. Recording sends no data over the network.
+- Keep inactive bionic settings together and report drift guard separately;
+  distinguish observed changes from saves and disclose integration coverage.
+
 ## 0.10.0 — 2026-10-07
 
 - Prefer the connected embedded MCP settings tool when opening settings or preview.

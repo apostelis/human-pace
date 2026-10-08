@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Open a local formatting preview or a settings page with Save."""
 import argparse
+import html
 import json
 import os
 from pathlib import Path
@@ -12,13 +13,15 @@ import time
 from http.server import HTTPServer, BaseHTTPRequestHandler
 import webbrowser
 import pace_config
+import pace_analytics as analytics
+from datetime import datetime, timezone
 
 
 def render(cfg):
     template = (Path(__file__).resolve().parent.parent / 'preview' / 'index.html').read_text()
     # JSON is embedded in script text, where HTML closing tags must be escaped.
     passages = json.loads((Path(__file__).resolve().parent.parent / 'preview' / 'passages.json').read_text())
-    return (template.replace('__CONFIG__', json.dumps(cfg).replace('<', '\\u003c'))
+    return (template.replace('__ANALYTICS_NOTICE__', html.escape(analytics.recording_notice())).replace('__CONFIG__', json.dumps(cfg).replace('<', '\\u003c'))
             .replace('__PASSAGES__', json.dumps(passages).replace('<', '\\u003c')))
 
 
@@ -26,7 +29,7 @@ def preview_config():
     return pace_config.load_effective_config(env=pace_config.option_environment())[0]
 
 
-def save_settings(data):
+def _save_settings(data):
     if not isinstance(data, dict) or set(data) != set(pace_config.DEFAULTS):
         raise ValueError("Supply all formatting settings and no unknown fields.")
     cfg, invalid = pace_config.validate(data)
@@ -43,6 +46,35 @@ def save_settings(data):
         return "Saved native options. Reload the plugin or restart the Claude session to apply them."
     pace_config.save_config(cfg)
     return "Saved. Your choices apply from your next ordinary prompt in Claude."
+
+
+def save_settings(data):
+    env = pace_config.option_environment()
+    old = None
+    try:
+        # Claude's injected options describe process startup. The configure CLI writes
+        # user options to disk, so refresh that saved baseline before each native save.
+        baseline_env = env
+        if env.get('CLAUDE_PLUGIN_OPTION_CONFIGURATIONSOURCE') == 'native':
+            saved_env = pace_config.option_environment({})
+            if saved_env.get('CLAUDE_PLUGIN_OPTION_CONFIGURATIONSOURCE') == 'native':
+                baseline_env = saved_env
+        old, _ = pace_config.load_effective_config(env=baseline_env)
+    except Exception:
+        pass  # Analytics baseline collection must never prevent a valid save.
+    config_source = 'native' if env.get('CLAUDE_PLUGIN_OPTION_CONFIGURATIONSOURCE') == 'native' else 'commands'
+    try:
+        message = _save_settings(data)
+    except (ValueError, OSError, subprocess.SubprocessError):
+        valid = analytics.valid_config(data)
+        analytics.record_action('settings_save', 'error' if valid else 'invalid', source='preview',
+            cfg=old, config_source=config_source, now=datetime.now(timezone.utc), events=[{
+                'event': 'settings_error', 'category': 'save_failed' if valid else 'invalid_settings', 'invalid_fields': []}])
+        raise
+    events = [{'event': 'config_saved', 'previous_settings': old}] if old is not None and old != data else []
+    analytics.record_action('settings_save', 'success', source='preview', cfg=data,
+        config_source=config_source, now=datetime.now(timezone.utc), events=events)
+    return message
 
 
 def create_server(token):
@@ -108,13 +140,7 @@ def serve():
             server.handle_request()
 
 
-def main():
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--serve', action='store_true', help=argparse.SUPPRESS)
-    parser.add_argument('--settings', action='store_true', help='Start the local settings page with Save')
-    parser.add_argument('--open', action='store_true', help='Open the preview in your browser')
-    parser.add_argument('--output', type=Path, help='Save to this HTML file')
-    args = parser.parse_args()
+def _run_preview(args):
     if args.serve:
         serve()
         return
@@ -142,6 +168,32 @@ def main():
     if args.open:
         if not webbrowser.open(path.as_uri()):
             print('Open the HTML file above in a browser to view the preview.')
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--serve', action='store_true', help=argparse.SUPPRESS)
+    parser.add_argument('--settings', action='store_true', help='Start the local settings page with Save')
+    parser.add_argument('--open', action='store_true', help='Open the preview in your browser')
+    parser.add_argument('--output', type=Path, help='Save to this HTML file')
+    args = parser.parse_args()
+    outcome = 'success'
+    try:
+        return _run_preview(args)
+    except (OSError, ValueError, subprocess.SubprocessError, SystemExit):
+        outcome = 'error'
+        raise
+    finally:
+        if not args.serve:
+            try:
+                env = pace_config.option_environment()
+                cfg, _ = pace_config.load_effective_config(env=env)
+                analytics.record_action('settings_open' if args.settings else 'preview', outcome,
+                    source='preview', cfg=cfg,
+                    config_source='native' if env.get('CLAUDE_PLUGIN_OPTION_CONFIGURATIONSOURCE') == 'native' else 'commands',
+                    now=datetime.now(timezone.utc))
+            except Exception:
+                pass
 
 
 if __name__ == '__main__':

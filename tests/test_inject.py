@@ -327,5 +327,9 @@ class HooksJsonTest(unittest.TestCase):
                 self.assertTrue(command.endswith("|| true"))
 
 
+from analytics_test_support import isolated_analytics
+setUpModule, tearDownModule = isolated_analytics()
+
+
 if __name__ == "__main__":
     unittest.main()

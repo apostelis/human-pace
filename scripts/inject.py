@@ -16,6 +16,8 @@ from pathlib import Path
 from typing import Mapping, Optional, Tuple
 
 import pace_config
+import pace_analytics as analytics
+from datetime import datetime, timezone
 
 RULES_DIR = Path(__file__).resolve().parent.parent / "rules"
 # What to say first, then shape, then how the words look. "bionic" picks its file by approach.
@@ -33,6 +35,7 @@ BIONIC_FRAGMENTS = {
     "third+anchor": "bionic-third-anchor.md",
 }
 PACE_COMMAND = re.compile(r"^\s*/(human-pace:)?pace(\s|$)")
+ANALYTICS_COMMAND = re.compile(r"^\s*/(?:human-pace:)?pace(?:-settings|-preview)?(?:\s|$)")
 SESSION_ID = re.compile(r"^[\w-]{1,128}$")  # also keeps the id safe to use as a file name
 STATE_MAX_AGE_SECONDS = 7 * 24 * 3600
 UPDATED_PREFIX = "human-pace rules changed; these replace the earlier ones.\n"
@@ -156,6 +159,26 @@ def main(stdin=sys.stdin, stdout=sys.stdout, env: Mapping[str, str] = os.environ
             return 0
         event = "SessionStart" if hook_input.get("hook_event_name") == "SessionStart" else "UserPromptSubmit"
         cfg, error = pace_config.load_effective_config(env=env)
+        # Count eligible prompt observations independently of rule re-injection.
+        prompt = hook_input.get("prompt")
+        if not (isinstance(prompt, str) and ANALYTICS_COMMAND.match(prompt)):
+            try:
+                now = datetime.now(timezone.utc)
+                store = analytics.default_store({**os.environ, **env})
+                if event == "SessionStart":
+                    try:
+                        store.maintain(now=now)
+                    except Exception:
+                        pass
+                source = "native" if env.get("CLAUDE_PLUGIN_OPTION_CONFIGURATIONSOURCE") == "native" else "commands"
+                store.observe(event=event, cfg=cfg, config_source=source,
+                              session_id=hook_input.get("session_id"), now=now)
+                if error:
+                    store.record([analytics.make_event("settings_error", now=now, integration="claude",
+                        source="hook", cfg=cfg, config_source=source,
+                        category="config_read_or_validation", invalid_fields=[])], now=now)
+            except Exception:
+                pass
         text = rules_to_send(event, build_rules(cfg, config_error=error), hook_input.get("session_id"),
                              cfg["driftGuard"])
         if text:
