@@ -143,9 +143,12 @@ class StoreTest(unittest.TestCase):
             self.assertFalse(self.store.observe(event='SessionStart', cfg=pc.defaults(),
                 config_source='commands', session_id='s1', now=NOW))
         self.assertEqual(self.store.read(now=NOW, days=30)['diagnostics']['capped_days'], ['2026-10-08'])
-        self.store.observe(event='UserPromptSubmit', cfg={**pc.defaults(), 'length': 300},
-            config_source='commands', session_id='s1', now=NOW)
-        self.assertFalse(any(e['event'] == 'config_observed_changed' for e in self.events()))
+        tomorrow = NOW + timedelta(days=1)
+        self.assertTrue(self.store.observe(event='UserPromptSubmit', cfg={**pc.defaults(), 'length': 300},
+            config_source='commands', session_id='s1', now=tomorrow))
+        records = self.store.read(now=tomorrow, days=30)['events']
+        self.assertEqual(sum(e['event'] == 'prompt_observed' for e in records), 1)
+        self.assertFalse(any(e['event'] == 'config_observed_changed' for e in records))
 
     def test_retention_excludes_before_pruning_and_clear_preserves_other_files(self):
         self.enable()
@@ -216,3 +219,26 @@ print(int(s.record([e], now=n)))
         outcomes = [int(child.communicate()[0]) for child in children]
         self.assertGreater(sum(outcomes), 0)
         self.assertEqual(len(self.events()), sum(outcomes))
+
+    def test_deeply_malformed_state_is_pruned_without_breaking_reports(self):
+        self.enable()
+        self.store.observe(event='SessionStart', cfg=pc.defaults(), config_source='commands', session_id='s1', now=NOW)
+        state = next(self.root.glob('state-*.json'))
+        state.write_text('[' * 1100 + '0' + ']' * 1100)
+        self.store.maintain(now=NOW)
+        self.assertFalse(state.exists())
+        self.assertEqual(len(self.events()), 1)
+
+    def test_deeply_malformed_preferences_produce_bounded_error(self):
+        self.enable()
+        (self.root / 'preferences.json').write_text('[' * 1100 + '0' + ']' * 1100)
+        with self.assertRaises(a.AnalyticsError):
+            self.store.preferences()
+
+    def test_capped_day_stays_closed_until_next_day(self):
+        self.enable()
+        with patch.object(a, 'MAX_DAY_BYTES', 1):
+            self.assertFalse(self.store.record([self.event()], now=NOW))
+        self.assertFalse(self.store.record([self.event()], now=NOW))
+        tomorrow = NOW + timedelta(days=1)
+        self.assertTrue(self.store.record([self.event(now=tomorrow)], now=tomorrow))

@@ -251,7 +251,7 @@ class AnalyticsStore:
             prefs = json.loads(_small_read(self.root / 'preferences.json'))
         except FileNotFoundError:
             return {'enabled': False, 'retention_days': 90}
-        except (OSError, ValueError, TypeError):
+        except (OSError, ValueError, TypeError, RecursionError):
             raise AnalyticsError('Invalid or unreadable analytics preferences.') from None
         if (not isinstance(prefs, dict) or set(prefs) != {'enabled', 'retention_days'}
                 or type(prefs['enabled']) is not bool):
@@ -293,6 +293,9 @@ class AnalyticsStore:
     def _append(self, events: List[dict], now: datetime) -> bool:
         if not events:
             return True
+        marker = self.root / ('capped-' + now.date().isoformat())
+        if marker.exists() or marker.is_symlink():
+            return False
         if any(validate_event(e) is None or datetime.fromisoformat(e['timestamp']).date() != now.date()
                for e in events):
             return False
@@ -375,7 +378,7 @@ class AnalyticsStore:
                 try:
                     state = json.loads(_small_read(path))
                     expired = utc(datetime.fromisoformat(state['timestamp'])) < cutoff
-                except (ValueError, KeyError, TypeError, AnalyticsError):
+                except (ValueError, KeyError, TypeError, RecursionError, AnalyticsError):
                     expired = True
                 if expired:
                     path.unlink()

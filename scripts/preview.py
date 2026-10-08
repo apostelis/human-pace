@@ -49,7 +49,14 @@ def _save_settings(data):
 
 def save_settings(data):
     env = pace_config.option_environment()
-    old, _ = pace_config.load_effective_config(env=env)
+    # Claude's injected options describe process startup. The configure CLI writes
+    # user options to disk, so refresh that saved baseline before each native save.
+    baseline_env = env
+    if env.get('CLAUDE_PLUGIN_OPTION_CONFIGURATIONSOURCE') == 'native':
+        saved_env = pace_config.option_environment({})
+        if saved_env.get('CLAUDE_PLUGIN_OPTION_CONFIGURATIONSOURCE') == 'native':
+            baseline_env = saved_env
+    old, _ = pace_config.load_effective_config(env=baseline_env)
     config_source = 'native' if env.get('CLAUDE_PLUGIN_OPTION_CONFIGURATIONSOURCE') == 'native' else 'commands'
     try:
         message = _save_settings(data)

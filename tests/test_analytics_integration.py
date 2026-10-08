@@ -227,3 +227,24 @@ class IntegrationTest(unittest.TestCase):
                                     capture_output=True, text=True)
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertEqual(self.events(), [], 'test runner polluted caller analytics store')
+
+    def test_native_save_baseline_refreshes_despite_stale_process_options(self):
+        from types import SimpleNamespace
+        settings = self.root / '.claude' / 'settings.json'
+        settings.parent.mkdir()
+        def write_options(values):
+            settings.write_text(json.dumps({'pluginConfigs': {'human-pace@human-pace': {'options': values}}}))
+        write_options({**pc.defaults(), 'configurationSource': 'native'})
+        def configure_cli(*args, **kwargs):
+            write_options(json.loads(kwargs['input']))
+            return SimpleNamespace(returncode=0, stderr='')
+        with patch('pace_config.Path.home', return_value=self.root), patch.dict(os.environ, {
+            'CLAUDE_PLUGIN_OPTION_CONFIGURATIONSOURCE': 'native', 'CLAUDE_PLUGIN_OPTION_LENGTH': '200'}), \
+                patch('preview.subprocess.run', side_effect=configure_cli):
+            cfg = {**pc.defaults(), 'length': 350}
+            preview.save_settings(cfg)
+            preview.save_settings(cfg)
+        saves = [e for e in self.events() if e['event'] == 'config_saved']
+        self.assertEqual(len(saves), 1)
+        self.assertEqual(saves[0]['previous_settings']['length'], 200)
+        self.assertEqual(saves[0]['settings']['length'], 350)
