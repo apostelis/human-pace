@@ -162,3 +162,296 @@ def validate_event(value: object) -> Optional[dict]:
         return value
     except (ValueError, TypeError, KeyError, OverflowError, RecursionError):
         return None
+
+# Storage is deliberately separate from config reads and rule delivery state.
+import hmac
+import os
+import secrets
+import stat
+import tempfile
+from contextlib import contextmanager
+from datetime import timedelta
+from typing import List, Mapping
+try:
+    import fcntl
+except ImportError:
+    fcntl = None
+
+
+class AnalyticsError(Exception):
+    """A bounded, user-facing local analytics failure."""
+
+
+def _open(path: Path, flags: int):
+    fd = os.open(str(path), flags | getattr(os, 'O_NOFOLLOW', 0) | getattr(os, 'O_NONBLOCK', 0), 0o600)
+    if not stat.S_ISREG(os.fstat(fd).st_mode):
+        os.close(fd)
+        raise AnalyticsError('Analytics requires regular local files.')
+    return fd
+
+
+def _small_read(path: Path, limit: int = MAX_EVENT_BYTES) -> bytes:
+    fd = _open(path, os.O_RDONLY)
+    with os.fdopen(fd, 'rb') as f:
+        data = f.read(limit + 1)
+    if len(data) > limit:
+        raise AnalyticsError('Analytics metadata exceeds its size limit.')
+    return data
+
+
+def _days(value: int) -> int:
+    if type(value) is not int or not 1 <= value <= 365:
+        raise AnalyticsError('Days must be an integer from 1 to 365.')
+    return value
+
+
+class AnalyticsStore:
+    def __init__(self, root: Path):
+        self.root = Path(root).expanduser()
+
+    def _check_root(self):
+        if self.root.is_symlink():
+            raise AnalyticsError('The analytics directory must not be a symbolic link.')
+
+    @contextmanager
+    def _lock(self):
+        self._check_root()
+        if fcntl is None:
+            raise AnalyticsError('Local analytics locking is unavailable on this platform.')
+        try:
+            self.root.mkdir(mode=0o700, parents=True, exist_ok=True)
+            fd = _open(self.root / 'store.lock', os.O_CREAT | os.O_RDWR)
+            with os.fdopen(fd, 'r+b') as lock:
+                try:
+                    fcntl.flock(lock.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+                except BlockingIOError:
+                    raise AnalyticsError('Analytics is busy; try again.') from None
+                try:
+                    yield
+                finally:
+                    fcntl.flock(lock.fileno(), fcntl.LOCK_UN)
+        except OSError:
+            raise AnalyticsError('Could not access local analytics storage.') from None
+
+    def _atomic(self, name: str, data: bytes):
+        path = self.root / name
+        if path.is_symlink():
+            raise AnalyticsError('Analytics metadata must not be a symbolic link.')
+        fd, tmp = tempfile.mkstemp(prefix='.analytics-', dir=self.root)
+        try:
+            with os.fdopen(fd, 'wb') as f:
+                f.write(data)
+            os.replace(tmp, path)
+        finally:
+            Path(tmp).unlink(missing_ok=True)
+
+    def preferences(self) -> dict:
+        self._check_root()
+        try:
+            prefs = json.loads(_small_read(self.root / 'preferences.json'))
+        except FileNotFoundError:
+            return {'enabled': False, 'retention_days': 90}
+        except (OSError, ValueError, TypeError):
+            raise AnalyticsError('Invalid or unreadable analytics preferences.') from None
+        if (not isinstance(prefs, dict) or set(prefs) != {'enabled', 'retention_days'}
+                or type(prefs['enabled']) is not bool):
+            raise AnalyticsError('Invalid analytics preferences.')
+        _days(prefs['retention_days'])
+        return prefs
+
+    def _secret(self) -> bytes:
+        try:
+            secret = _small_read(self.root / 'session.secret', 64)
+            if len(secret) == 64 and HEX64.fullmatch(secret.decode('ascii')):
+                return bytes.fromhex(secret.decode('ascii'))
+        except (OSError, ValueError, UnicodeError, AnalyticsError):
+            pass
+        # Missing/corrupt secret starts a new correlation epoch, not fake transitions.
+        for path in self.root.glob('state-*.json'):
+            if re.fullmatch(r'state-[0-9a-f]{64}\.json', path.name) and not path.is_symlink():
+                path.unlink()
+        secret = secrets.token_bytes(32)
+        self._atomic('session.secret', secret.hex().encode())
+        return secret
+
+    def configure(self, *, enabled: Optional[bool] = None, retention_days: Optional[int] = None) -> dict:
+        if enabled is not None and type(enabled) is not bool:
+            raise AnalyticsError('Enabled must be a boolean.')
+        if retention_days is not None:
+            _days(retention_days)
+        with self._lock():
+            prefs = self.preferences()
+            if enabled is not None:
+                prefs['enabled'] = enabled
+            if retention_days is not None:
+                prefs['retention_days'] = retention_days
+            if prefs['enabled']:
+                self._secret()
+            self._atomic('preferences.json', json.dumps(prefs).encode())
+            return prefs
+
+    def _append(self, events: List[dict], now: datetime) -> bool:
+        if not events:
+            return True
+        if any(validate_event(e) is None or datetime.fromisoformat(e['timestamp']).date() != now.date()
+               for e in events):
+            return False
+        data = b''.join((json.dumps(e, ensure_ascii=True, separators=(',', ':')) + '\n').encode() for e in events)
+        path = self.root / ('events-' + now.date().isoformat() + '.jsonl')
+        fd = _open(path, os.O_CREAT | os.O_RDWR | os.O_APPEND)
+        with os.fdopen(fd, 'a+b') as f:
+            f.seek(0, os.SEEK_END)
+            size = f.tell()
+            prefix = b''
+            if size:
+                f.seek(-1, os.SEEK_END)
+                if f.read(1) != b'\n':
+                    prefix = b'\n'
+            if size + len(prefix) + len(data) > MAX_DAY_BYTES:
+                self._atomic('capped-' + now.date().isoformat(), b'1')
+                return False
+            f.write(prefix + data)
+        return True
+
+    def record(self, events: List[dict], *, now: datetime) -> bool:
+        try:
+            now = utc(now)
+            if not self.preferences()['enabled']:
+                return False
+            with self._lock():
+                return self.preferences()['enabled'] and self._append(events, now)
+        except Exception:
+            return False
+
+    def observe(self, *, event: str, cfg: dict, config_source: str,
+                session_id: object, now: datetime) -> bool:
+        try:
+            now = utc(now)
+            if event not in ('SessionStart', 'UserPromptSubmit') or not self.preferences()['enabled']:
+                return False
+            with self._lock():
+                if not self.preferences()['enabled']:
+                    return False
+                key, previous = None, None
+                if isinstance(session_id, str) and re.fullmatch(r'[\w-]{1,128}', session_id):
+                    key = hmac.new(self._secret(), session_id.encode(), hashlib.sha256).hexdigest()
+                    try:
+                        state = json.loads(_small_read(self.root / ('state-' + key + '.json')))
+                        if valid_config(state.get('settings')) and utc(datetime.fromisoformat(state['timestamp'])) >= now - timedelta(days=self.preferences()['retention_days']):
+                            previous = state['settings']
+                    except (OSError, ValueError, KeyError, TypeError, AttributeError, AnalyticsError):
+                        pass
+                common = dict(now=now, integration='claude', source='hook', session_key=key,
+                              cfg=cfg, config_source=config_source)
+                events = []
+                if key and (previous is None or event == 'SessionStart'):
+                    events.append(make_event('session_observed', **common))
+                if previous is not None and previous != cfg:
+                    events.append(make_event('config_observed_changed', previous_settings=previous, **common))
+                if event == 'UserPromptSubmit':
+                    events.append(make_event('prompt_observed', enabled=any(cfg[k] for k in pc.SWITCHES) or cfg['length'] > 0, **common))
+                if not self._append(events, now):
+                    return False
+                if key:
+                    self._atomic('state-' + key + '.json', json.dumps({'settings': cfg, 'timestamp': now.isoformat()}).encode())
+                return True
+        except Exception:
+            return False
+
+    def _maintain(self, now: datetime):
+        cutoff = now - timedelta(days=self.preferences()['retention_days'])
+        for path in self.root.iterdir():
+            if path.is_symlink() or not path.is_file():
+                continue
+            match = re.fullmatch(r'(?:events-(\d{4}-\d{2}-\d{2})\.jsonl|capped-(\d{4}-\d{2}-\d{2}))', path.name)
+            if match:
+                try:
+                    expired = datetime.fromisoformat(next(g for g in match.groups() if g)).date() < cutoff.date()
+                except ValueError:
+                    continue
+                if expired:
+                    path.unlink()
+            elif re.fullmatch(r'state-[0-9a-f]{64}\.json', path.name):
+                try:
+                    state = json.loads(_small_read(path))
+                    expired = utc(datetime.fromisoformat(state['timestamp'])) < cutoff
+                except (ValueError, KeyError, TypeError, AnalyticsError):
+                    expired = True
+                if expired:
+                    path.unlink()
+
+    def maintain(self, *, now: datetime) -> None:
+        if not self.root.exists():
+            return
+        with self._lock():
+            self._maintain(utc(now))
+
+    def clear(self, *, now: datetime) -> None:
+        utc(now)
+        with self._lock():
+            for path in self.root.iterdir():
+                if (re.fullmatch(r'(?:events-\d{4}-\d{2}-\d{2}\.jsonl|state-[0-9a-f]{64}\.json|capped-\d{4}-\d{2}-\d{2})', path.name)
+                        and not path.is_symlink() and path.is_file()):
+                    path.unlink()
+            self._atomic('session.secret', secrets.token_hex(32).encode())
+
+    def read(self, *, now: datetime, days: int) -> dict:
+        now, days = utc(now), _days(days)
+        prefs = self.preferences()
+        cutoff = now - timedelta(days=min(days, prefs['retention_days']))
+        diagnostics = {'malformed': 0, 'unsupported': 0, 'duplicates': 0, 'capped_days': [],
+                       'first': None, 'last': None, 'enabled': prefs['enabled'],
+                       'retention_days': prefs['retention_days'], 'requested_days': days,
+                       'window_start': cutoff.isoformat(), 'window_end': now.isoformat()}
+        if not self.root.exists():
+            return {'events': [], 'diagnostics': diagnostics}
+        events, seen = [], set()
+        with self._lock():
+            for path in sorted(self.root.iterdir()):
+                if path.is_symlink() or not path.is_file():
+                    continue
+                marker = re.fullmatch(r'capped-(\d{4}-\d{2}-\d{2})', path.name)
+                if marker and cutoff.date().isoformat() <= marker[1] <= now.date().isoformat():
+                    diagnostics['capped_days'].append(marker[1])
+                match = re.fullmatch(r'events-(\d{4}-\d{2}-\d{2})\.jsonl', path.name)
+                if not match or not cutoff.date().isoformat() <= match[1] <= now.date().isoformat():
+                    continue
+                fd = _open(path, os.O_RDONLY)
+                with os.fdopen(fd, 'rb') as f:
+                    while True:
+                        line = f.readline(MAX_EVENT_BYTES + 1)
+                        if not line:
+                            break
+                        if len(line) > MAX_EVENT_BYTES:
+                            while line and not line.endswith(b'\n'):
+                                line = f.readline(MAX_EVENT_BYTES + 1)
+                            diagnostics['malformed'] += 1
+                            continue
+                        try:
+                            value = json.loads(line)
+                        except (ValueError, UnicodeError, RecursionError):
+                            diagnostics['malformed'] += 1
+                            continue
+                        if isinstance(value, dict) and value.get('schema_version') != 1:
+                            diagnostics['unsupported'] += 1
+                            continue
+                        value = validate_event(value)
+                        if value is None:
+                            diagnostics['malformed'] += 1
+                            continue
+                        if not cutoff <= datetime.fromisoformat(value['timestamp']) <= now:
+                            continue
+                        if value['event_id'] in seen:
+                            diagnostics['duplicates'] += 1
+                            continue
+                        seen.add(value['event_id'])
+                        events.append(value)
+        events.sort(key=lambda e: e['timestamp'])
+        if events:
+            diagnostics['first'], diagnostics['last'] = events[0]['timestamp'], events[-1]['timestamp']
+        return {'events': events, 'diagnostics': diagnostics}
+
+
+def default_store(env: Optional[Mapping[str, str]] = None) -> AnalyticsStore:
+    env = os.environ if env is None else env
+    return AnalyticsStore(Path(env.get('HUMAN_PACE_ANALYTICS_DIR', '~/.claude/human-pace-analytics')))
