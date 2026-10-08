@@ -207,7 +207,10 @@ def _days(value: int) -> int:
 
 class AnalyticsStore:
     def __init__(self, root: Path):
-        self.root = Path(root).expanduser()
+        try:
+            self.root = Path(root).expanduser()
+        except (RuntimeError, TypeError, ValueError):
+            raise AnalyticsError('Invalid local analytics directory.') from None
 
     def _check_root(self):
         if self.root.is_symlink():
@@ -342,7 +345,7 @@ class AnalyticsStore:
                         state = json.loads(_small_read(self.root / ('state-' + key + '.json')))
                         if valid_config(state.get('settings')) and utc(datetime.fromisoformat(state['timestamp'])) >= now - timedelta(days=self.preferences()['retention_days']):
                             previous = state['settings']
-                    except (OSError, ValueError, KeyError, TypeError, AttributeError, AnalyticsError):
+                    except (OSError, ValueError, KeyError, TypeError, AttributeError, RecursionError, AnalyticsError):
                         pass
                 common = dict(now=now, integration='claude', source='hook', session_key=key,
                               cfg=cfg, config_source=config_source)

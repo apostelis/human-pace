@@ -242,3 +242,13 @@ print(int(s.record([e], now=n)))
         self.assertFalse(self.store.record([self.event()], now=NOW))
         tomorrow = NOW + timedelta(days=1)
         self.assertTrue(self.store.record([self.event(now=tomorrow)], now=tomorrow))
+
+    def test_deeply_malformed_state_recovers_on_ordinary_prompt(self):
+        self.enable()
+        self.store.observe(event='SessionStart', cfg=pc.defaults(), config_source='commands', session_id='s1', now=NOW)
+        next(self.root.glob('state-*.json')).write_text('[' * 1100 + '0' + ']' * 1100)
+        for _ in range(2):
+            self.assertTrue(self.store.observe(event='UserPromptSubmit', cfg=pc.defaults(),
+                config_source='commands', session_id='s1', now=NOW))
+        self.assertEqual(sum(e['event'] == 'prompt_observed' for e in self.events()), 2)
+        self.assertEqual(sum(e['event'] == 'config_observed_changed' for e in self.events()), 0)

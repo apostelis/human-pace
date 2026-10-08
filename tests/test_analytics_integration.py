@@ -248,3 +248,26 @@ class IntegrationTest(unittest.TestCase):
         self.assertEqual(len(saves), 1)
         self.assertEqual(saves[0]['previous_settings']['length'], 200)
         self.assertEqual(saves[0]['settings']['length'], 350)
+
+    def test_invalid_analytics_path_cannot_suppress_formatting(self):
+        baseline = self.send('SessionStart')
+        broken = self.send('SessionStart', extra={'HUMAN_PACE_ANALYTICS_DIR': '~human_pace_nonexistent_87654/analytics'})
+        self.assertTrue(baseline)
+        self.assertEqual(broken, baseline)
+
+    def test_invalid_analytics_path_has_clean_cli_error(self):
+        from contextlib import redirect_stdout, redirect_stderr
+        output, error = io.StringIO(), io.StringIO()
+        with patch.dict(os.environ, {'HUMAN_PACE_ANALYTICS_DIR': '~human_pace_nonexistent_87654/analytics'}), \
+                redirect_stdout(output), redirect_stderr(error):
+            code = pace.main(['analytics export'])
+        self.assertEqual(code, 1)
+        self.assertEqual(output.getvalue(), '')
+        self.assertTrue(error.getvalue())
+
+    def test_analytics_baseline_failure_cannot_block_valid_settings_save(self):
+        (self.root / 'config.json').write_text('[' * 1100 + '0' + ']' * 1100)
+        message = preview.save_settings(pc.defaults())
+        self.assertIn('Saved', message)
+        self.assertEqual(pc.load_config()[0], pc.defaults())
+        self.assertEqual(sum(e['event'] == 'config_saved' for e in self.events()), 0)

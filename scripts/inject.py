@@ -162,14 +162,14 @@ def main(stdin=sys.stdin, stdout=sys.stdout, env: Mapping[str, str] = os.environ
         # Count eligible prompt observations independently of rule re-injection.
         prompt = hook_input.get("prompt")
         if not (isinstance(prompt, str) and ANALYTICS_COMMAND.match(prompt)):
-            now = datetime.now(timezone.utc)
-            store = analytics.default_store({**os.environ, **env})
-            if event == "SessionStart":
-                try:
-                    store.maintain(now=now)
-                except Exception:
-                    pass
             try:
+                now = datetime.now(timezone.utc)
+                store = analytics.default_store({**os.environ, **env})
+                if event == "SessionStart":
+                    try:
+                        store.maintain(now=now)
+                    except Exception:
+                        pass
                 source = "native" if env.get("CLAUDE_PLUGIN_OPTION_CONFIGURATIONSOURCE") == "native" else "commands"
                 store.observe(event=event, cfg=cfg, config_source=source,
                               session_id=hook_input.get("session_id"), now=now)

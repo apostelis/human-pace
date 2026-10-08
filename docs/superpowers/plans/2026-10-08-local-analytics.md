@@ -1,6 +1,6 @@
 # Local Analytics Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** Record local usage and compare configurations using the approved event definitions, before adding remote gathering.
 
@@ -97,7 +97,7 @@ Avoid global instances so imports and pure config reads have no filesystem effec
 **Consumes:** `pace_config.DEFAULTS`, `pace_config.validate`, plugin manifest version.
 **Produces:** `normalize_config`, `config_identity`, `make_event`, `validate_event`.
 
-- [ ] Add table-driven unittest cases for inactive fields, delivery changes, invalid booleans/numbers,
+- [x] Add table-driven unittest cases for inactive fields, delivery changes, invalid booleans/numbers,
   unknown event fields, bad timestamps, future schemas, and missing settings on settings events.
   Use this concrete normalization assertion:
 
@@ -114,8 +114,8 @@ def test_inactive_bionic_fields_do_not_split_groups(self):
                         analytics.config_identity(c)["config_id"])
 ```
 
-- [ ] Run `python3 -m unittest discover -s tests -p 'test_analytics.py' -v`; expect missing-module/API failure.
-- [ ] Implement canonical identities using these exact normalization rules:
+- [x] Run `python3 -m unittest discover -s tests -p 'test_analytics.py' -v`; expect missing-module/API failure.
+- [x] Implement canonical identities using these exact normalization rules:
 
 ```python
 normalized = {key: cfg[key] for key in pc.DEFAULTS if key != "driftGuard"}
@@ -131,12 +131,12 @@ payload = json.dumps({"normalization_version": 1, "settings": normalized},
 digest = hashlib.sha256(payload.encode("utf-8")).hexdigest()
 ```
 
-- [ ] Define explicit per-event field allowlists from the spec. Require validated full snapshots
+- [x] Define explicit per-event field allowlists from the spec. Require validated full snapshots
   for current/previous settings and derive changed fields internally. Reject unrecognized fields,
   types, schema versions, and invalid scores rather than serializing caller dictionaries blindly.
   Use `uuid.uuid4().hex` event IDs, timezone-aware ISO timestamps, and the actual manifest version
   or `unknown`. Validate recorded identities against snapshots when reading.
-- [ ] Re-run the task tests; require all passing. Commit the two task files as
+- [x] Re-run the task tests; require all passing. Commit the two task files as
   `feat: define local analytics event contract`.
 
 ### Task 2: Bounded local storage and observation state
@@ -145,7 +145,7 @@ digest = hashlib.sha256(payload.encode("utf-8")).hexdigest()
 **Consumes:** Task 1 contract functions.
 **Produces:** `AnalyticsStore`, `default_store`, all shared storage methods.
 
-- [ ] Add tests with a `TemporaryDirectory`, fixed aware time, and this basic control invariant:
+- [x] Add tests with a `TemporaryDirectory`, fixed aware time, and this basic control invariant:
 
 ```python
 def test_disabled_store_creates_no_events(self):
@@ -159,11 +159,11 @@ def test_disabled_store_creates_no_events(self):
     self.assertEqual(len(store.read(now=self.now, days=30)["events"]), 1)
 ```
 
-- [ ] Add tests for a truncated multibyte line followed by a valid append; duplicate IDs; file caps;
+- [x] Add tests for a truncated multibyte line followed by a valid append; duplicate IDs; file caps;
   16 KiB limit; invalid/future records; expired files; preference corruption; missing secret;
   explicit busy errors; and clear preserving preferences and the external rating log.
-- [ ] Run the task test command; expect storage API failures.
-- [ ] Implement nonblocking lock acquisition on a permanent `store.lock` file using `fcntl.flock`
+- [x] Run the task test command; expect storage API failures.
+- [x] Implement nonblocking lock acquisition on a permanent `store.lock` file using `fcntl.flock`
   on macOS/Linux. If locking support is unavailable, recording fails open and explicit controls
   explain the limitation. Never delete the lock inode during clear. Under the lock re-read enabled
   preferences to prevent a stale recorder writing after disable.
@@ -180,22 +180,22 @@ finally:
   `append_batch` here denotes the internal append routine to implement: open the UTC day's file
   in append/binary mode, inspect its last byte, add a separator if needed, check the entire new
   size, then write the serialized batch. A failed/partial write never advances observation state.
-- [ ] Write preferences/secret/state using private temporary files and atomic replacement under
+- [x] Write preferences/secret/state using private temporary files and atomic replacement under
   the same lock. Create the secret once on enable. A missing secret creates a fresh secret and
   resets only derived session state; old event keys stay historical. Use HMAC-SHA256 for validated
   host IDs. Track each session's last snapshot and observation timestamp in its own state file.
-- [ ] Implement `observe`: known sessions emit `session_observed` at baseline/session-start;
+- [x] Implement `observe`: known sessions emit `session_observed` at baseline/session-start;
   ordinary prompts emit `prompt_observed`; differing full snapshots emit observed-change events.
   Missing IDs permit prompt observations only. Build/append each observation batch under one lock.
   Treat `enabled` as `any(cfg[k] for k in pc.SWITCHES) or cfg['length'] > 0`.
-- [ ] Implement lazy retention and owned-file-only clear. Reader diagnostics include malformed,
+- [x] Implement lazy retention and owned-file-only clear. Reader diagnostics include malformed,
   unsupported, duplicate, capped-day counts and first/last retained timestamps. A bounded reader
   discards overlong lines incrementally; hand-edited huge lines cannot allocate unbounded memory.
   Skip symlinked owned data files and never follow them during deletion or writes.
-- [ ] Run simultaneous append processes against a temporary store; verify every successful batch
+- [x] Run simultaneous append processes against a temporary store; verify every successful batch
   is parseable, failed lock attempts return false, and clear cannot interleave with a locked append.
   Also test a symlink to a sentinel file and verify the sentinel survives clear/maintenance.
-- [ ] Re-run task tests and commit as `feat: add bounded local analytics storage`.
+- [x] Re-run task tests and commit as `feat: add bounded local analytics storage`.
 
 ### Task 3: Deterministic usage and comparison reports
 
@@ -203,7 +203,7 @@ finally:
 **Consumes:** Validated events and reader diagnostics from Task 2.
 **Produces:** `summarize`, `render_usage`, `render_compare`.
 
-- [ ] Build fixtures with a fixed UTC clock and `make_event`; pin this sequence:
+- [x] Build fixtures with a fixed UTC clock and `make_event`; pin this sequence:
 
 ```python
 # Each event has session_key="s1"; A is defaults, B is defaults with bionic=False.
@@ -219,19 +219,19 @@ self.assertEqual(result["configurations"][bid]["prompts"], 2)
 self.assertEqual(result["transitions"], {(aid, bid): 1, (bid, aid): 1})
 ```
 
-- [ ] Add fixtures for off prompts, null IDs, duplicate session observations, UTC midnight,
+- [x] Add fixtures for off prompts, null IDs, duplicate session observations, UTC midnight,
   events exactly at the window start, future timestamps, sparse ratings, and overlapping sessions.
   The window is `[now - timedelta(days=days), now]`; sort equal-time events by original input order.
-- [ ] Run `python3 -m unittest discover -s tests -p 'test_analytics_report.py' -v`; expect missing module.
-- [ ] Implement one pure aggregation pass with sets/counters. Define result keys: `invocations`,
+- [x] Run `python3 -m unittest discover -s tests -p 'test_analytics_report.py' -v`; expect missing module.
+- [x] Implement one pure aggregation pass with sets/counters. Define result keys: `invocations`,
   `observed_sessions`, `active_sessions`, `active_prompts`, `prompts`, `unassigned_prompts`,
   `configurations`, `transitions`, `editing`, `changes_per_active_session`, `ratings`, `errors`,
   `associations`, `coverage`. Configuration rows include prompt/session/day counts, both shares,
   readable normalized settings, and per-version/integration/delivery breakdowns.
-- [ ] Collapse consecutive formatting IDs per known session for transitions. Keep full-settings
+- [x] Collapse consecutive formatting IDs per known session for transitions. Keep full-settings
   observed-change counts separate, including inactive-field edits, and include only sessions with
   enabled prompts in the changes-per-active-session denominator and numerator.
-- [ ] Compute boolean co-occurrence and categorical setting breakdowns using prompt exposure;
+- [x] Compute boolean co-occurrence and categorical setting breakdowns using prompt exposure;
   exclude inactive bionic dimensions from denominators. Report numerators/denominators, rating
   distributions, and a sparse label below five ratings. No p-values or “best configuration” claim.
 
@@ -240,11 +240,11 @@ def ratio(numerator, denominator):
     return None if denominator == 0 else numerator / denominator
 ```
 
-- [ ] Render readable text with UTC window, enabled/off counts, best-effort disclaimer, available
+- [x] Render readable text with UTC window, enabled/off counts, best-effort disclaimer, available
   coverage, null-session exclusions, and malformed/capped diagnostics. Keep usage and rating-only
   configurations visible. Exact preset labels require full current preset matches; otherwise show
   custom settings. Rank usage rows by prompts with a deterministic ID tie-breaker.
-- [ ] Re-run both analytics test modules; commit as `feat: report local usage and configuration comparisons`.
+- [x] Re-run both analytics test modules; commit as `feat: report local usage and configuration comparisons`.
 
 ### Task 4: Instrument eligible hook observations
 
@@ -252,7 +252,7 @@ def ratio(numerator, denominator):
 **Consumes:** `AnalyticsStore.observe`, `maintain`, `make_event`.
 **Produces:** Recorded hook/session/configuration/error observations without changed hook output.
 
-- [ ] Add a temporary analytics override to every hook test environment and subprocess environment.
+- [x] Add a temporary analytics override to every hook test environment and subprocess environment.
   Explicitly enable it only for analytics integration cases. Pin this user-visible invariant:
 
 ```python
@@ -268,11 +268,11 @@ self.assertEqual(len({e["session_key"] for e in events if e["session_key"]}), 1)
 
   The event discriminator in every Task 1 record is `event`; use it consistently in all tests.
   Integration helpers freeze the recorder's clock and redirect hook stdout exactly like current tests.
-- [ ] Add tests for off configuration, native changes, malformed config fallbacks, environment kill
+- [x] Add tests for off configuration, native changes, malformed config fallbacks, environment kill
   switch, SDK skip, missing session IDs, and analytics exceptions with byte-identical hook output.
-- [ ] Run `python3 -m unittest discover -s tests -p 'test_*inject*.py' -v` plus the new integration module;
+- [x] Run `python3 -m unittest discover -s tests -p 'test_*inject*.py' -v` plus the new integration module;
   expect new event assertions to fail.
-- [ ] Insert recording after the existing skip decision and resolved config, before rule emission:
+- [x] Insert recording after the existing skip decision and resolved config, before rule emission:
 
 ```python
 try:
@@ -289,10 +289,10 @@ except Exception:
   so a failed cleanup does not skip a record. Construct only allowlisted error categories, using
   `config_read_or_validation` if the existing loader exposes only a free-text error. Never parse
   a path or serialize that message into analytics.
-- [ ] Exclude exact plugin commands `/pace`, `/pace-settings`, `/pace-preview` and their namespaced
+- [x] Exclude exact plugin commands `/pace`, `/pace-settings`, `/pace-preview` and their namespaced
   forms from analytics prompt counts without broadening formatting's existing skip behavior.
   Do not suppress similarly prefixed unrelated commands.
-- [ ] Run hook and analytics tests; commit as `feat: record local hook usage without affecting formatting`.
+- [x] Run hook and analytics tests; commit as `feat: record local hook usage without affecting formatting`.
 
 ### Task 5: Wire commands, ratings, and settings previews
 
@@ -302,7 +302,7 @@ except Exception:
 **Consumes:** Storage, contract, and report APIs above.
 **Produces:** Specified `/pace analytics` and report commands plus save/rating/invocation events.
 
-- [ ] Add isolated analytics roots to existing entry-point tests before instrumenting them.
+- [x] Add isolated analytics roots to existing entry-point tests before instrumenting them.
   Add command integration tests for this save sequence:
 
 ```python
@@ -314,30 +314,30 @@ self.assertEqual(sum(e["event"] == "command_invoked" for e in events), 2)
 self.assertEqual(sum(e["event"] == "config_saved" for e in events), 1)
 ```
 
-- [ ] Add tests that native mode allows analytics/report/rate, blocks formatting changes, labels
+- [x] Add tests that native mode allows analytics/report/rate, blocks formatting changes, labels
   blocked commands correctly, and records no successful save on subprocess failure. A rating note
   containing a sentinel secret must appear only in the existing rating log, never export.
-- [ ] Run relevant tests; expect new command routing and recording assertions to fail.
-- [ ] Route analytics/report commands before native-mode formatting rejection. Use strict ASCII
+- [x] Run relevant tests; expect new command routing and recording assertions to fail.
+- [x] Route analytics/report commands before native-mode formatting rejection. Use strict ASCII
   integer parsing and 1–365 validation. Implement all commands listed in the approved spec;
   reject trailing arguments. Export JSONL only; errors go to stderr with a nonzero CLI exit.
   Keep `run(args, now=None)` usable by existing callers; have `main` handle explicit analytics errors.
-- [ ] Refactor ordinary command dispatch to return an internal structured outcome rather than
+- [x] Refactor ordinary command dispatch to return an internal structured outcome rather than
   inferring success from rendered text. Define a small internal `CommandResult` dataclass with
   `text`, `operation`, `outcome`, and `events` fields. `run` returns its text after best-effort
   recording. Allowed operations are `status`, `toggle`, `approach`, `gradient`, `anchor_trigger`,
   `length`, `drift_guard`, `preset`, `reset`, `rate`, `preview`, `settings_open`, `settings_save`,
   and `unknown`; raw invalid arguments are never retained.
-- [ ] At successful saves compare old/new full snapshots; at successful rating-log writes create
+- [x] At successful saves compare old/new full snapshots; at successful rating-log writes create
   the rating event. Failed log/save operations receive command outcome `error`. Use null session
   IDs for commands/previews unless an explicit verified host ID is actually supplied.
-- [ ] Preserve `pace.report()` as the existing ratings-only function. `/pace report` appends compact
+- [x] Preserve `pace.report()` as the existing ratings-only function. `/pace report` appends compact
   usage text in `run`; update exact-output tests to assert the preserved rating block plus the
   new summary. Detailed comparisons read analytics events only.
-- [ ] Instrument preview parent startup once; the `--serve` child emits no settings-open event.
+- [x] Instrument preview parent startup once; the `--serve` child emits no settings-open event.
   Authenticated save requests record one `settings_save` invocation and successful changed save;
   foreign/unauthorized HTTP requests produce neither event. Keep browser tokens/URLs out of events.
-- [ ] Test reports/control/export self-exclusion, failed analytics writes preserving successful
+- [x] Test reports/control/export self-exclusion, failed analytics writes preserving successful
   saves, invalid payloads, reset preserving analytics preferences, and exact save/new-observation
   separation through real command and hook calls. Run affected tests and commit as
   `feat: expose local analytics controls and instrument settings actions`.
@@ -348,7 +348,7 @@ self.assertEqual(sum(e["event"] == "config_saved" for e in events), 1)
 **Consumes:** Complete local analytics implementation.
 **Produces:** Documented feature and recorded verification results.
 
-- [ ] Update command hint/help with the implemented analytics/report grammar. Add README examples:
+- [x] Update command hint/help with the implemented analytics/report grammar. Add README examples:
 
 ```text
 /pace analytics on
@@ -360,21 +360,21 @@ self.assertEqual(sum(e["event"] == "config_saved" for e in events), 1)
 /pace analytics clear
 ```
 
-- [ ] Document configured-use semantics, hook-delivery counts, native change observation latency,
+- [x] Document configured-use semantics, hook-delivery counts, native change observation latency,
   overlapping session counts, sparse ratings, UTC windows, lazy retention, size limits, unsupported
   integration coverage, local data exclusion, and future gathering as a separate phase.
-- [ ] Add an end-to-end fixture: enable → session → A,A → save B twice → B,B → save A → A → rate →
+- [x] Add an end-to-end fixture: enable → session → A,A → save B twice → B,B → save A → A → rate →
   reports → export → disable → attempted prompt → clear. Assert 3/5 vs 2/5 usage, two transitions,
   two saves, one rating, no analytics self-events, valid exports, and preserved rating log.
-- [ ] Run `python3 -m unittest discover -s tests -v` and `python3 scripts/export_openai.py --check`.
+- [x] Run `python3 -m unittest discover -s tests -v` and `python3 scripts/export_openai.py --check`.
   Review failures against intentional output changes; do not regenerate formatting exports unless
   a legitimate formatting change is identified (none is expected).
-- [ ] Benchmark 200 warm hook calls each with analytics off/on in temporary stores; collect median
+- [x] Benchmark 200 warm hook calls each with analytics off/on in temporary stores; collect median
   and p95 using `time.perf_counter`. Suppress hook stdout. Verify prompt recording invokes no
   network operations or history reader. Report measurements rather than inventing a latency limit.
-- [ ] Run `git diff --check`, inspect the final diff for forbidden fields, accidental user-data paths,
+- [x] Run `git diff --check`, inspect the final diff for forbidden fields, accidental user-data paths,
   unbounded reads, and network imports. Confirm unrelated untracked files are untouched.
-- [ ] Commit documentation/tests as `docs: document local analytics and validate full workflow`.
+- [x] Commit documentation/tests as `docs: document local analytics and validate full workflow`.
   Request the execution method's final review, resolve concrete findings, and report test results,
   overhead, coverage limits, and the command to start recording. Do not enable the user's real
   analytics store merely to verify implementation.

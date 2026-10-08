@@ -49,14 +49,18 @@ def _save_settings(data):
 
 def save_settings(data):
     env = pace_config.option_environment()
-    # Claude's injected options describe process startup. The configure CLI writes
-    # user options to disk, so refresh that saved baseline before each native save.
-    baseline_env = env
-    if env.get('CLAUDE_PLUGIN_OPTION_CONFIGURATIONSOURCE') == 'native':
-        saved_env = pace_config.option_environment({})
-        if saved_env.get('CLAUDE_PLUGIN_OPTION_CONFIGURATIONSOURCE') == 'native':
-            baseline_env = saved_env
-    old, _ = pace_config.load_effective_config(env=baseline_env)
+    old = None
+    try:
+        # Claude's injected options describe process startup. The configure CLI writes
+        # user options to disk, so refresh that saved baseline before each native save.
+        baseline_env = env
+        if env.get('CLAUDE_PLUGIN_OPTION_CONFIGURATIONSOURCE') == 'native':
+            saved_env = pace_config.option_environment({})
+            if saved_env.get('CLAUDE_PLUGIN_OPTION_CONFIGURATIONSOURCE') == 'native':
+                baseline_env = saved_env
+        old, _ = pace_config.load_effective_config(env=baseline_env)
+    except Exception:
+        pass  # Analytics baseline collection must never prevent a valid save.
     config_source = 'native' if env.get('CLAUDE_PLUGIN_OPTION_CONFIGURATIONSOURCE') == 'native' else 'commands'
     try:
         message = _save_settings(data)
@@ -66,7 +70,7 @@ def save_settings(data):
             cfg=old, config_source=config_source, now=datetime.now(timezone.utc), events=[{
                 'event': 'settings_error', 'category': 'save_failed' if valid else 'invalid_settings', 'invalid_fields': []}])
         raise
-    events = [{'event': 'config_saved', 'previous_settings': old}] if old != data else []
+    events = [{'event': 'config_saved', 'previous_settings': old}] if old is not None and old != data else []
     analytics.record_action('settings_save', 'success', source='preview', cfg=data,
         config_source=config_source, now=datetime.now(timezone.utc), events=events)
     return message
