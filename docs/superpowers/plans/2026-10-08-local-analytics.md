@@ -393,3 +393,20 @@ and one implementer can keep event semantics consistent throughout. Use a fresh 
 after the complete branch is passing. The alternative is subagent-driven execution with fresh
 implementation and review contexts for each task. Implementation begins after plan review and
 execution-method selection.
+
+## Execution results — 2026-10-08
+
+- Implemented in `codex/local-analytics` in the app-managed worktree.
+- Full verification: 223 unittest tests passed; `scripts/export_openai.py --check`
+  and `git diff --check` passed.
+- 200 warm in-process hook calls per mode: recording off median 0.376 ms / p95
+  0.419 ms; recording on median 1.065 ms / p95 1.307 ms. These measurements exclude
+  Python startup and use temporary local storage.
+- Independent review found stale native-save snapshots and malformed-state recovery
+  issues; the first reviewer hit a provider limit and an available reviewer finished
+  the remaining review. All actionable findings were reproduced and fixed, including
+  analytics-directory failures affecting formatting and snapshot reads blocking saves.
+- Additional regressions cover daily-cap enforcement and direct test-runner isolation.
+- Tests exercise native configuration through a simulated CLI writing real temporary
+  settings files. A live Claude installation was not used for verification.
+- Personal analytics recording was not enabled; remote gathering remains deferred.
