@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Add remote sharing controls and a one-time opt-in invitation with persistent dismissal.
+  Sharing defaults off and requires a configured collecting release and manual uploads.
+- Keep newest queued events by evicting oldest entries when byte/count caps are reached.
+- Add a strict sanitized event contract, durable collector, deletion/restore lifecycle,
+  private aggregate reports, and isolated verification fixtures.
+
 - Add local analytics enabled by default for command invocations, configured prompt usage,
   sessions, settings saves/changes, and numeric ratings.
 - Disclose local recording in installation guidance, command help/status, reports,

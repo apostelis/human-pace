@@ -6,7 +6,7 @@
 ## Install for Claude Code
 
 Local usage recording is **on by default** in the Claude integration. Events stay
-on your machine; nothing is uploaded. Disable it with `/pace analytics off`.
+on your machine by default. Remote sharing is separately opt-in and requires manual uploads. Disable local recording with `/pace analytics off`.
 See [local usage analytics](#local-usage-analytics) for recorded fields and controls.
 
 ```
@@ -58,7 +58,7 @@ Local recording starts automatically when you use the supported integration. Ins
 
 Recording is on by default. An explicit `/pace analytics off` choice persists
 across restarts, formatting resets, and history clears. Everything stays on this
-machine; no events are uploaded. The usage report shows command invocations, enabled/off prompts,
+machine. Events are uploaded only after separate sharing opt-in and an explicit manual upload. The usage report shows command invocations, enabled/off prompts,
 observed and active sessions, configuration shares, repeat usage across days,
 saved edits, observed changes, and settings errors. The comparison report shows
 configuration transitions, ratings with sample counts, and setting associations
@@ -135,6 +135,36 @@ cannot see it automatically, so this phase cannot establish community adoption,
 revenue, or willingness to pay. A later gathering phase can support broader
 adoption and retention evidence; maintenance costs and commercial demand still
 need separate evidence. Remote gathering remains a separate future phase.
+
+## Optional remote sharing
+
+Remote sharing defaults to off. A collecting release offers a one-time session
+invitation and **Enable sharing**, **Not now**, **Don't ask again** in the browser
+settings page. Dismissals persist; revisit through **Sharing settings** or
+`/pace analytics share`. Enabling sharing queues future usage statistics,
+configuration choices and numeric ratings. Prompts, replies and rating notes
+are excluded. The settings page shows recipient, retention and deletion details.
+
+| Command | Effect |
+|---|---|
+| `/pace analytics share` | State, recipient, queued/evicted/expired counts and last upload result |
+| `/pace analytics share on` / `off` | Enable future queuing / stop sharing and purge pending events |
+| `/pace analytics share preview` | Inspect exactly the next pending upload batch |
+| `/pace analytics share upload` | Manually upload one bounded batch; report receipts and remaining events |
+| `/pace analytics share delete` | Revoke and request deletion for all saved sharing identities; rerun to check completion |
+
+The queue keeps the newest events, evicting oldest entries at 10 MiB or 10,000
+events; unsent data expires beyond the seven-day UTC upload horizon. Off retains
+previously uploaded data; delete requests server erasure. Local analytics off also
+disables sharing. Clear purges pending events and keeps consent/dismissal choices;
+it does not delete server data. Formatting and settings actions never make remote
+analytics requests. Usage covers instrumented Claude flows; portable skill usage
+is unavailable.
+
+This checkout has no collection destination configured. Opt-in and invitations
+activate only after release configuration is completed. See the
+[operator runbook](docs/analytics/remote-operations.md) for deployment requirements,
+retention and verification.
 
 ## Configure through Claude’s plugin panel
 
