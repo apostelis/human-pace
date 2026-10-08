@@ -59,3 +59,7 @@ class PanelTest(unittest.TestCase):
             run.return_value.stderr = 'plugin not installed'
             with self.assertRaisesRegex(ValueError, 'plugin not installed'):
                 preview.save_settings(pc.defaults())
+
+
+from analytics_test_support import isolated_analytics
+setUpModule, tearDownModule = isolated_analytics()

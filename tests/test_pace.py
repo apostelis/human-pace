@@ -345,3 +345,7 @@ class ReportTest(PaceTestBase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+from analytics_test_support import isolated_analytics
+setUpModule, tearDownModule = isolated_analytics()

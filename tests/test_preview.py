@@ -53,3 +53,7 @@ el('text-type').value='narrative';newPassage();assert.equal(current.type,'narrat
 '''
         result = subprocess.run(['node', '-e', harness + source + checks], capture_output=True, text=True)
         self.assertEqual(result.returncode, 0, result.stderr)
+
+
+from analytics_test_support import isolated_analytics
+setUpModule, tearDownModule = isolated_analytics()

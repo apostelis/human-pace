@@ -58,3 +58,7 @@ class NativeConfigTest(unittest.TestCase):
             self.assertIn('length 321', pace.run([]))
             self.assertIn('Configure options', pace.run(['length', '10']))
             self.assertFalse((Path(directory) / 'config.json').exists())
+
+
+from analytics_test_support import isolated_analytics
+setUpModule, tearDownModule = isolated_analytics()
