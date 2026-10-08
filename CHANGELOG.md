@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+- Add opt-in local analytics for command invocations, configured prompt usage,
+  sessions, settings saves/changes, and numeric ratings.
+- Add usage and configuration comparison reports, with local export, retention,
+  disable, and clear controls. Recording sends no data over the network.
+- Keep inactive bionic settings together and report drift guard separately;
+  distinguish observed changes from saves and disclose integration coverage.
+
 ## 0.10.0 — 2026-10-07
 
 - Prefer the connected embedded MCP settings tool when opening settings or preview.

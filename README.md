@@ -32,7 +32,7 @@
 | `/pace on` / `/pace off` | Same as `preset focus` / `preset off` |
 | `/pace reset` | Restore defaults |
 | `/pace rate <1-5> [note]` | Log how the current setting feels |
-| `/pace report` | Average rating per setting |
+| `/pace report` | Ratings plus a compact 30-day local usage summary |
 
 **Ch**anges **ap**ply **fr**om **yo**ur **ne**xt **pr**ompt; **t**he **up**dated **ru**les **a**re **se**nt **on**ce. **Se**ttings **li**ve **i**n `~/.claude/human-pace.json`, **a**nd **ra**tings **i**n
 `~/.claude/human-pace-log.jsonl`.
@@ -41,6 +41,77 @@
 
 **He**adless **ru**ns (`claude -p`, **t**he **Ag**ent **S**DK) **a**re **sk**ipped, **s**o **sc**ripts **a**nd **C**I **g**et **pl**ain **ou**tput.
 **S**et `HUMAN_PACE=1` **t**o **fo**rce **t**he **ru**les **o**n **th**ere, **o**r `HUMAN_PACE=0` **t**o **tu**rn **th**em **o**ff **eve**rywhere.
+
+## Local usage analytics
+
+Enable recording explicitly, then use human-pace normally:
+
+```text
+/pace analytics on
+/pace report usage 30
+/pace report compare 30
+```
+
+Recording is off by default. Everything stays on this machine; no events are
+uploaded. The usage report shows command invocations, enabled/off prompts,
+observed and active sessions, configuration shares, repeat usage across days,
+saved edits, observed changes, and settings errors. The comparison report shows
+configuration transitions, ratings with sample counts, and setting associations
+such as the share of prompts with chunks enabled for each bionic approach.
+
+| Command | Effect |
+|---|---|
+| `/pace analytics` | Status, storage location, retention, coverage, and retained date range |
+| `/pace analytics on` / `/pace analytics off` | Start/stop future local recording; retain existing history |
+| `/pace analytics retention 90` | Retain 1–365 days; default 90 |
+| `/pace analytics export` | Print validated retained events as JSONL |
+| `/pace analytics clear` | Delete analytics history and rotate its local session secret; preserve ratings and recording preferences |
+| `/pace report usage [days]` | Detailed usage; default 30 days, range 1–365 |
+| `/pace report compare [days]` | Configuration comparisons over the same kind of window |
+
+The controls also work when native formatting options are selected. `/pace reset`
+resets formatting only. The existing rating log remains the source of the first
+part of `/pace report`; analytics comparisons use ratings recorded while analytics
+was enabled, with no historical backfill. Reports and analytics commands never
+record themselves.
+
+**What the counts mean.** A prompt is an eligible Claude hook delivery, even when
+unchanged rules are not resent. “Enabled” means at least one formatting option or
+a length cap was configured; it does not verify model compliance. Resume and
+compaction do not create additional distinct sessions. Without a host event ID,
+repeated hook deliveries cannot be distinguished from distinct prompts. Missing
+session IDs are excluded from session/transition analysis, with their count shown.
+Sessions using multiple configurations appear in multiple configuration rows.
+
+Successful changed saves measure editing. A new configuration seen by a hook
+measures an observed change; these counts are separate. Native-panel or manual
+file edits are detected on the next hook, so intermediate edits can be missed.
+Transitions use consecutive prompt configurations in the same session. Inactive
+bionic options do not split configuration groups; drift guard is shown separately.
+Associations describe local usage, not reading speed or comprehension. Fewer than
+five ratings is labeled sparse.
+
+**Coverage and storage.** Automatic prompt/session recording covers the Claude
+hook integration. Executed local commands and browser settings actions are also
+recorded; their integration is marked unknown when the host cannot be verified.
+Codex/ChatGPT's skill and the experimental embedded MCP app are not instrumented.
+The hook honors `HUMAN_PACE=0` and skips SDK use unless `HUMAN_PACE=1`.
+
+Data lives in `~/.claude/human-pace-analytics/`; `HUMAN_PACE_ANALYTICS_DIR` overrides
+that directory. Events contain timestamps, plugin version, settings, bounded
+operation/error categories, numeric ratings, and locally keyed session hashes.
+They exclude prompts, replies, rating notes, paths, raw session IDs, and error
+messages. UTC defines report windows, daily files, and active-day counts.
+
+Recording is best effort: lock contention or storage errors can drop events and
+never prevent normal formatting or a successful settings save. Each event is
+limited to 16 KiB and each day's event file to 10 MiB; reports identify capped days
+when a cap marker could be saved. Cleanup is lazy, during session start or analytics
+controls/reports; readers exclude expired records before cleanup. Disabling keeps
+history until it expires or you clear it. Local locking requires macOS/Linux
+`fcntl`; unsupported platforms report that limitation for controls and skip recording.
+
+Remote gathering is a separate future phase, after validating these metrics locally.
 
 ## Configure through Claude’s plugin panel
 
@@ -53,7 +124,7 @@ next ordinary prompt.
 
 The default source is **commands**, preserving your existing `/pace` settings in
 `~/.claude/human-pace.json`. In **native** mode the panel owns the settings and
-`/pace` changes are declined; `/pace rate` and `/pace report` still work. Switch
+`/pace` formatting changes are declined; ratings, reports, and analytics controls still work. Switch
 back to **commands** to restore the settings file without losing it. Native
 values are validated again by the hook; invalid fields use their defaults.
 Picker fields require Claude Code 2.1.271+, including when using commands mode.
