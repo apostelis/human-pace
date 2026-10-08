@@ -33,7 +33,7 @@ USAGE = """Usage:
   /pace analytics export        print retained, validated events as JSONL
   /pace analytics share [on|off|preview|upload|delete]  optional manual gathering
   /pace analytics clear         delete analytics history; preserve ratings and preferences
-Local usage recording is on by default; nothing is uploaded. Disable with /pace analytics off.
+Local usage recording is on by default; remote sharing is separately opt-in with manual uploads. Disable local recording with /pace analytics off.
 Notes cannot contain double quotes, backticks or $."""
 
 SWITCH_NAMES = {name.lower(): name for name in pace_config.SWITCHES}

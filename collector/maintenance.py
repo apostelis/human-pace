@@ -78,8 +78,13 @@ def maintain(store,journal,*,now):
     cutoff=(now.date()-timedelta(days=89)).isoformat()
     with store.connect() as db:
         db.execute('BEGIN IMMEDIATE')
-        removed=db.execute('DELETE FROM events WHERE identity IN (SELECT identity FROM installations WHERE revoked=1) OR day<?',(cutoff,)).rowcount
-        db.execute('UPDATE installations SET completed=coalesce(completed,?) WHERE revoked=1',(now.isoformat(),))
+        removed=db.execute('DELETE FROM events WHERE day<?',(cutoff,)).rowcount
+        # Only identities whose tombstones were durably written above may complete.
+        # A concurrent revocation absent from that snapshot waits for the next pass.
+        for item in revoked:
+            removed+=db.execute('DELETE FROM events WHERE identity=?',(item['identity'],)).rowcount
+            db.execute('UPDATE installations SET completed=coalesce(completed,?) WHERE identity=? AND revoked=1',
+                       (now.isoformat(),item['identity']))
     return {'removed':removed,'completed':len(revoked)}
 
 def restore(database,backup,journal,*,key,now):

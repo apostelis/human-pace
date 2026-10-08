@@ -52,3 +52,24 @@ class MaintenanceTest(unittest.TestCase):
         recovered.register('c'*32,'d'*64,now=NOW)
         with self.assertRaises(CollectorError):recovered.ingest(late['ingestion_token'],[prompt(identity='c'*32)],now=NOW)
         self.assertEqual(recovered.deletion_status(late['deletion_token'])['status'],'completed')
+    def test_maintenance_does_not_complete_revocation_after_journal_snapshot(self):
+        import collector.maintenance as maintenance
+        late=self.store.register('c'*32,'d'*64,now=NOW)
+        self.store.ingest(late['ingestion_token'],[prompt(identity='c'*32)],now=NOW)
+        self.store.request_delete(self.creds['deletion_token'],now=NOW)
+        original=maintenance.append_tombstone
+        raced=False
+        def append_and_race(journal,identity,requested,recovery):
+            nonlocal raced
+            original(journal,identity,requested,recovery)
+            if not raced:
+                raced=True
+                with patch.object(maintenance,'append_tombstone',side_effect=CollectorError('journal_unavailable')):
+                    with self.assertRaises(CollectorError):self.store.request_delete(late['deletion_token'],now=NOW)
+        with patch.object(maintenance,'append_tombstone',append_and_race):
+            maintain(self.store,self.journal,now=NOW)
+        self.assertEqual(self.store.deletion_status(late['deletion_token'])['status'],'pending')
+        with self.store.connect() as db:
+            self.assertEqual(db.execute('SELECT count(*) FROM events WHERE identity=?',('c'*32,)).fetchone()[0],1)
+        maintain(self.store,self.journal,now=NOW)
+        self.assertEqual(self.store.deletion_status(late['deletion_token'])['status'],'completed')

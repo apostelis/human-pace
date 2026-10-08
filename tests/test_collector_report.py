@@ -35,3 +35,17 @@ class ReportTest(unittest.TestCase):
         e=prompt(cfg=off);s=report.summarize([prompt(),e],start=date(2026,10,8),end=date(2026,10,8))
         self.assertEqual(s['active_installations'],1);self.assertEqual(s['enabled_prompt_count'],1)
         self.assertIn('not enough data',report.render(report.summarize([],start=date(2026,10,8),end=date(2026,10,8))))
+    def test_adoption_suppresses_sparse_active_numerator(self):
+        off={**pc.defaults(),**{k:False for k in pc.SWITCHES},'length':0}
+        events=[prompt(identity=f'{n:032x}',session=f'{n:064x}',cfg=off) for n in range(1,6)]
+        events.extend(prompt(identity=f'{n:032x}',session=f'{n:064x}',sequence=2) for n in (1,6,7,8,9))
+        s=report.summarize(events,start=date(2026,10,8),end=date(2026,10,8))
+        self.assertNotIn('installation adoption 1/5',report.render(s))
+        self.assertIn('installation adoption suppressed',report.render(s))
+    def test_adoption_suppresses_sparse_complement(self):
+        events=[prompt(identity=f'{n:032x}',session=f'{n:064x}') for n in range(1,6)]
+        other={**pc.defaults(),'length':300}
+        events.extend(prompt(identity=f'{n:032x}',session=f'{n:064x}',sequence=2,cfg=other) for n in range(1,7))
+        s=report.summarize(events,start=date(2026,10,8),end=date(2026,10,8))
+        self.assertNotIn('installation adoption 5/6',report.render(s))
+        self.assertIn('installation adoption suppressed',report.render(s))

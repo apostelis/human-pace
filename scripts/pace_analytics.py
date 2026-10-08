@@ -505,7 +505,7 @@ def recording_notice() -> str:
     try:
         enabled = default_store().preferences()['enabled']
     except Exception:
-        return "Local analytics status unavailable. Recording is on by default; nothing is uploaded. Check /pace analytics."
+        return "Local analytics status unavailable. Recording is on by default; sharing status is unavailable. Check /pace analytics and /pace analytics share."
     remote_notice = ''
     try:
         from pace_remote_store import RemoteStore

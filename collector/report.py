@@ -83,8 +83,13 @@ def render(s):
     if s['active_installations']<5 or any(len(row['identities'])<5 for _,row in rows):
         lines.append('Configuration comparisons suppressed: fewer than five contributing identities in at least one slice. Complementary totals/shares withheld.')
     else:
+        # Adoption counts active contributors, not every prompt contributor.
+        # Suppress the whole column if either side of any ratio is a sparse group.
+        adoption_visible=all((n==0 or n>=5) and (d-n==0 or d-n>=5)
+                             for n,d in (row['installation_adoption'] for _,row in rows))
         for key,row in sorted(rows):
-            lines.append(f"Configuration {key}: exposure {ratio(row['prompt_share'])}; enabled exposure {ratio(row['active_prompt_share'])}; installation adoption {ratio(row['installation_adoption'])}.")
+            adoption=ratio(row['installation_adoption']) if adoption_visible else 'suppressed (sparse numerator or complement)'
+            lines.append(f"Configuration {key}: exposure {ratio(row['prompt_share'])}; enabled exposure {ratio(row['active_prompt_share'])}; installation adoption {adoption}.")
             if len(row['rating_identities'])>=5:
                 lines.append(f"Ratings: mean {row['rating_mean']:.2f}; n={len(row['scores'])}; contributors={len(row['rating_identities'])}; {'sparse' if len(row['scores'])<5 else 'observational'}.")
                 if all(len(ids)>=5 for ids in row['score_identities'].values()):lines.append('Score distribution: '+str(dict(row['rating_histogram'])))
