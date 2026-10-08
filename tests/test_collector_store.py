@@ -49,3 +49,14 @@ class CollectorTest(unittest.TestCase):
         with patch('collector.store.MAX_INSTALLATIONS',1):
             with self.assertRaises(CollectorError):self.store.register('c'*32,'d'*64,now=NOW)
             self.assertEqual(self.creds,self.store.register('a'*32,'b'*64,now=NOW))
+    def test_concurrent_revoke_and_ingest_cannot_restore_contribution(self):
+        import threading
+        barrier=threading.Barrier(2);errors=[]
+        def ingest():
+            barrier.wait()
+            try:self.store.ingest(self.creds['ingestion_token'],[prompt()],now=NOW)
+            except CollectorError as error:errors.append(error.reason)
+        thread=threading.Thread(target=ingest);thread.start();barrier.wait()
+        self.store.request_delete(self.creds['deletion_token'],now=NOW);thread.join(2)
+        self.assertFalse(thread.is_alive());self.assertEqual(self.store.live_events(start=NOW.date(),end=NOW.date()),[])
+        self.assertTrue(all(x=='credentials' for x in errors))

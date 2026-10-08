@@ -103,3 +103,17 @@ class IntegrationTest(unittest.TestCase):
         self.local.observe(event='SessionStart',cfg=changed,config_source='commands',session_id='session',now=NOW)
         events=json.loads(self.remote.preview(now=NOW))['events']
         self.assertEqual(sum(e['event']=='config_observed_changed' for e in events),1)
+    def test_off_during_registration_prevents_event_send(self):
+        import threading
+        from pace_remote_transport import upload
+        started=threading.Event();release=threading.Event();calls=[];results=[]
+        class WaitingTransport:
+            def request(inner,method,path,*,body,credential,deadline):
+                calls.append(path);data=json.loads(body)
+                started.set();release.wait(2)
+                return {'installation_id':data['installation_id'],'ingestion_token':'c'*64,'deletion_token':'d'*64}
+        self.enable();self.record_prompt()
+        thread=threading.Thread(target=lambda:results.append(upload(self.remote,WaitingTransport(),now=NOW)))
+        thread.start();self.assertTrue(started.wait(2));self.remote.disable(now=NOW);release.set();thread.join(2)
+        self.assertFalse(thread.is_alive());self.assertNotIn('/v1/events',calls)
+        self.assertFalse(self.remote.status(now=NOW)['enabled']);self.assertEqual(self.remote.status(now=NOW)['queued_count'],0)

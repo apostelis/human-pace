@@ -1,6 +1,6 @@
 # Remote Analytics Gathering Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** Gather prospective, explicitly shared human-pace usage through manual bounded uploads, with trustworthy aggregate reports and deletion controls.
 
@@ -152,8 +152,8 @@ render(summary: dict) -> str
 **Consumes:** `pace_analytics.FIELDS`, `BASE`, `CONFIG`, `config_identity`, and `validate_event`.
 **Produces:** Strict serialization/validation functions above and test helper `prompt(identity, session, sequence, cfg=None, day="2026-10-08") -> dict`.
 
-- [ ] Write a valid fixture helper using `pace_config.defaults()` and `pace_analytics.config_identity()`. Remote base fields are `schema_version`, `event_id`, `event`, `day`, `installation_id`, `plugin_version`, `integration`, `source`, `session_key`; add `prompt_sequence` only to prompt events (null iff session is null). Config and event-specific fields follow the local event contract. Use 32-character lowercase random hex identity/event IDs and 64-character hex session HMACs.
-- [ ] Add tests for all seven event types, required/unknown fields, version mismatch, invalid config hashes, boolean scores/sequences, exact canonical day strings, invalid plugin version/source/integration, and oversized/deeply nested input. Include:
+- [x] Write a valid fixture helper using `pace_config.defaults()` and `pace_analytics.config_identity()`. Remote base fields are `schema_version`, `event_id`, `event`, `day`, `installation_id`, `plugin_version`, `integration`, `source`, `session_key`; add `prompt_sequence` only to prompt events (null iff session is null). Config and event-specific fields follow the local event contract. Use 32-character lowercase random hex identity/event IDs and 64-character hex session HMACs.
+- [x] Add tests for all seven event types, required/unknown fields, version mismatch, invalid config hashes, boolean scores/sequences, exact canonical day strings, invalid plugin version/source/integration, and oversized/deeply nested input. Include:
 
 ```python
 def test_unknown_fields_and_duplicate_keys_are_rejected(self):
@@ -164,10 +164,10 @@ def test_unknown_fields_and_duplicate_keys_are_rejected(self):
         contract.strict_json(b'{"schema_version":1,"schema_version":2}', max_bytes=16384)
 ```
 
-- [ ] Run `python3 -m unittest discover -s tests -p 'test_remote_contract.py' -v`; expect the new import or validator assertions to fail.
-- [ ] Implement `ContractError`, constants, duplicate-key rejection with `object_pairs_hook`, bounded recursive depth (16), canonical `json.dumps(sort_keys=True, separators=(',', ':'), ensure_ascii=True, allow_nan=False)`, and a validator that reconstructs a synthetic local event for shared checks, substituting a UTC midnight timestamp and removing remote-only fields. Validate remote identifiers and prompt sequence separately with exact integer types. Reject nonfinite numbers and encoded events over 16 KiB.
-- [ ] Publish JSON Schema with seven `oneOf` branches, explicit `additionalProperties: false`, local config field enums/ranges, and nullable session/sequence rules. Hash consistency remains a documented semantic validator check. Test every branch with positive and negative fixtures against Python validation; check schema branch/field parity without adding client dependencies.
-- [ ] Rerun the targeted tests; expect PASS. Commit only this task's files with `feat: define remote analytics event contract`.
+- [x] Run `python3 -m unittest discover -s tests -p 'test_remote_contract.py' -v`; expect the new import or validator assertions to fail.
+- [x] Implement `ContractError`, constants, duplicate-key rejection with `object_pairs_hook`, bounded recursive depth (16), canonical `json.dumps(sort_keys=True, separators=(',', ':'), ensure_ascii=True, allow_nan=False)`, and a validator that reconstructs a synthetic local event for shared checks, substituting a UTC midnight timestamp and removing remote-only fields. Validate remote identifiers and prompt sequence separately with exact integer types. Reject nonfinite numbers and encoded events over 16 KiB.
+- [x] Publish JSON Schema with seven `oneOf` branches, explicit `additionalProperties: false`, local config field enums/ranges, and nullable session/sequence rules. Hash consistency remains a documented semantic validator check. Test every branch with positive and negative fixtures against Python validation; check schema branch/field parity without adding client dependencies.
+- [x] Rerun the targeted tests; expect PASS. Commit only this task's files with `feat: define remote analytics event contract`.
 
 ### Task 2: Consent, epoch identities, private queue, and claims
 
@@ -175,8 +175,8 @@ def test_unknown_fields_and_duplicate_keys_are_rejected(self):
 **Consumes:** Contract serialization; existing analytics lock and private file helpers.
 **Produces:** `RemoteStore` lifecycle/queue methods and a private `remote/` directory.
 
-- [ ] Add temporary-store tests: absent sharing preferences means off; enabling requires local recording and a complete release destination; idempotent on preserves identity; off→on rotates it; off purges pending events and retains deletion ledger. Test 0700/0600 permissions where supported and symlink refusal.
-- [ ] Test an old upload claim against a new epoch:
+- [x] Add temporary-store tests: absent sharing preferences means off; enabling requires local recording and a complete release destination; idempotent on preserves identity; off→on rotates it; off purges pending events and retains deletion ledger. Test 0700/0600 permissions where supported and symlink refusal.
+- [x] Test an old upload claim against a new epoch:
 
 ```python
 def test_old_receipt_cannot_remove_new_epoch_data(self):
@@ -192,11 +192,11 @@ def test_old_receipt_cannot_remove_new_epoch_data(self):
 ```
 
 Here test-class `enable()` supplies a synthetic release dict; `enqueue_prompt()` holds the local lock and calls `enqueue_locked` with one newly constructed local event. Define both in this task's test class, never against user storage.
-- [ ] Run `python3 -m unittest discover -s tests -p 'test_remote_store.py' -v`; expect FAIL.
-- [ ] Implement `remote/preferences.json` (enabled, generation, notice/schema/recipient fingerprint, consent time, invitation choice, session-notice-shown), `remote/identities.json` (current and previous identities, recovery keys, credentials, deletion state), and `remote/queue.sqlite3` (events, session state, diagnostics, claim metadata). Metadata writes are atomic/private under the shared lock. Queue rows store canonical remote event bytes, event day, insertion time, identity, and claim ID. Store bounded counters in the same transaction; cap canonical queued bytes, not SQLite file size. Reclaim SQLite free pages during explicit maintenance, never hooks; bound session-state rows to 10,000 and expire inactive state after 7 days. Reaching that state limit omits session association for additional sessions and discloses it instead of reusing keys.
-- [ ] Assign monotonically increasing prompt sequences before capacity checks and persist them even when a queued event is evicted. Missing/corrupt sequence state rotates the remote session HMAC salt, creating a baseline instead of resetting a known session sequence. Reject recording before consent time; disclose clock rollback locally. Expiry uses UTC day cutoff `now.date() - timedelta(days=7)` consistently with server acceptance.
-- [ ] Implement oldest-first eviction and insertion in one queue transaction. Use a monotonic SQLite insertion ordinal, not event time, for ordering; expire stale events first, then delete the oldest rows until each validated incoming event fits both caps. Process incoming events in order so an oversized batch retains its newest suffix. Never evict for a rejected individual event. Increment evicted counters without changing prompt sequences or retained event IDs. Remove empty claims; allow in-flight receipts to reference their original IDs but ignore already-evicted rows. Claims retain metadata only, not a second persistent payload copy.
-- [ ] Add concrete queue boundary tests:
+- [x] Run `python3 -m unittest discover -s tests -p 'test_remote_store.py' -v`; expect FAIL.
+- [x] Implement `remote/preferences.json` (enabled, generation, notice/schema/recipient fingerprint, consent time, invitation choice, session-notice-shown), `remote/identities.json` (current and previous identities, recovery keys, credentials, deletion state), and `remote/queue.sqlite3` (events, session state, diagnostics, claim metadata). Metadata writes are atomic/private under the shared lock. Queue rows store canonical remote event bytes, event day, insertion time, identity, and claim ID. Store bounded counters in the same transaction; cap canonical queued bytes, not SQLite file size. Reclaim SQLite free pages during explicit maintenance, never hooks; bound session-state rows to 10,000 and expire inactive state after 7 days. Reaching that state limit omits session association for additional sessions and discloses it instead of reusing keys.
+- [x] Assign monotonically increasing prompt sequences before capacity checks and persist them even when a queued event is evicted. Missing/corrupt sequence state rotates the remote session HMAC salt, creating a baseline instead of resetting a known session sequence. Reject recording before consent time; disclose clock rollback locally. Expiry uses UTC day cutoff `now.date() - timedelta(days=7)` consistently with server acceptance.
+- [x] Implement oldest-first eviction and insertion in one queue transaction. Use a monotonic SQLite insertion ordinal, not event time, for ordering; expire stale events first, then delete the oldest rows until each validated incoming event fits both caps. Process incoming events in order so an oversized batch retains its newest suffix. Never evict for a rejected individual event. Increment evicted counters without changing prompt sequences or retained event IDs. Remove empty claims; allow in-flight receipts to reference their original IDs but ignore already-evicted rows. Claims retain metadata only, not a second persistent payload copy.
+- [x] Add concrete queue boundary tests:
 
 ```python
 def test_full_queue_retains_newest_events(self):
@@ -212,9 +212,9 @@ def test_full_queue_retains_newest_events(self):
 ```
 
 The fixture starts with consent enabled and a temporary local store; `remote_store.MAX_QUEUE_EVENTS` is the production 10,000-event constant. Repeat with the byte cap, equal insertion timestamps, an over-cap incoming batch, a claimed oldest event, and a malformed incoming event. Retained sequence numbers must have gaps after eviction.
-- [ ] Implement claim selection of one canonical batch respecting count/body bounds, a 30-second claim lease, and generation-tagged acknowledgements. Expired claims become pending with unchanged event IDs. Bound preview to exactly the next batch, print remaining counts in status separately, and acknowledge only IDs belonging to the claim. Malformed/unwritable preferences fail closed for sharing while local recording continues. Explicit controls surface errors.
-- [ ] Expire payload queue rows after 7 days, but retain the credential ledger for deletion. Persist a bounded local warning when prior-epoch ledger entries reach 100; refuse another consent epoch until deletion completes rather than silently discarding credentials or letting metadata grow without limit. A never-registered identity can be removed locally without a remote deletion call.
-- [ ] Test cap equality/overflow, seven-day boundary, partial receipts, killed-claim recovery, corrupt state, full disk, busy lock, expiration, and repeated clear. Rerun targeted tests; expect PASS. Commit with `feat: add opt-in remote analytics queue`.
+- [x] Implement claim selection of one canonical batch respecting count/body bounds, a 30-second claim lease, and generation-tagged acknowledgements. Expired claims become pending with unchanged event IDs. Bound preview to exactly the next batch, print remaining counts in status separately, and acknowledge only IDs belonging to the claim. Malformed/unwritable preferences fail closed for sharing while local recording continues. Explicit controls surface errors.
+- [x] Expire payload queue rows after 7 days, but retain the credential ledger for deletion. Persist a bounded local warning when prior-epoch ledger entries reach 100; refuse another consent epoch until deletion completes rather than silently discarding credentials or letting metadata grow without limit. A never-registered identity can be removed locally without a remote deletion call.
+- [x] Test cap equality/overflow, seven-day boundary, partial receipts, killed-claim recovery, corrupt state, full disk, busy lock, expiration, and repeated clear. Rerun targeted tests; expect PASS. Commit with `feat: add opt-in remote analytics queue`.
 
 ### Task 3: Project only prospective successfully recorded local events
 
@@ -222,8 +222,8 @@ The fixture starts with consent enabled and a temporary local store; `remote_sto
 **Consumes:** Local validator, remote store and contract.
 **Produces:** `project` and exactly one queue attempt for every successfully appended local event batch.
 
-- [ ] Add tests using real local store operations with network access patched to fail. Assert default-on local recording produces no remote directory/events; after sharing opt-in, ordinary prompt observations queue once even when no rules are emitted. Historical local records are never scanned.
-- [ ] Pin epoch baselines and secret exclusion:
+- [x] Add tests using real local store operations with network access patched to fail. Assert default-on local recording produces no remote directory/events; after sharing opt-in, ordinary prompt observations queue once even when no rules are emitted. Historical local records are never scanned.
+- [x] Pin epoch baselines and secret exclusion:
 
 ```python
 def test_projection_does_not_copy_local_identifiers(self):
@@ -239,10 +239,10 @@ def test_projection_does_not_copy_local_identifiers(self):
     self.assertEqual(remote["day"], "2026-10-08")
 ```
 
-- [ ] Run `python3 -m unittest discover -s tests -p 'test_remote_projection.py' -v`; expect FAIL.
-- [ ] Implement allowlisted copying, new remote IDs, day-only timestamps, HMAC session mapping, and validated fields. For `config_observed_changed`, use remote epoch observation state, never local pre-consent `previous_settings`; skip the event until a baseline exists. For `config_saved`, old/new settings are the prospective edit's own payload. Null sessions stay null. Keep `unknown` integration for commands that do not verify a host; do not infer Claude from their path.
-- [ ] Add a single `_after_append_locked(events, now)` helper called after `_append` succeeds in both `record` and `observe`, before observation-state writes. It catches remote failures without changing the local return value. Do not instrument `_append` itself or add another call in hooks/preview/commands. Projection/sequence/queue updates share a SQLite transaction. Missing remote preferences return immediately without constructing a store database.
-- [ ] Test local append failure queues nothing, queue failure preserves local history, state-write failure does not duplicate queue rows, rating notes never enter either projection, `HUMAN_PACE=0` and SDK skip retain current behavior, and native settings snapshots retain existing validation. Rerun targeted and existing analytics tests; expect PASS. Commit with `feat: queue sanitized prospective analytics events`.
+- [x] Run `python3 -m unittest discover -s tests -p 'test_remote_projection.py' -v`; expect FAIL.
+- [x] Implement allowlisted copying, new remote IDs, day-only timestamps, HMAC session mapping, and validated fields. For `config_observed_changed`, use remote epoch observation state, never local pre-consent `previous_settings`; skip the event until a baseline exists. For `config_saved`, old/new settings are the prospective edit's own payload. Null sessions stay null. Keep `unknown` integration for commands that do not verify a host; do not infer Claude from their path.
+- [x] Add a single `_after_append_locked(events, now)` helper called after `_append` succeeds in both `record` and `observe`, before observation-state writes. It catches remote failures without changing the local return value. Do not instrument `_append` itself or add another call in hooks/preview/commands. Projection/sequence/queue updates share a SQLite transaction. Missing remote preferences return immediately without constructing a store database.
+- [x] Test local append failure queues nothing, queue failure preserves local history, state-write failure does not duplicate queue rows, rating notes never enter either projection, `HUMAN_PACE=0` and SDK skip retain current behavior, and native settings snapshots retain existing validation. Rerun targeted and existing analytics tests; expect PASS. Commit with `feat: queue sanitized prospective analytics events`.
 
 ### Task 4: Bounded HTTPS transport and upload orchestration
 
@@ -250,8 +250,8 @@ def test_projection_does_not_copy_local_identifiers(self):
 **Consumes:** Claims and validated batch bytes; response contracts defined here and used by collector tasks.
 **Produces:** HTTPS transport, `upload`, `delete_all`, persistent retry outcomes.
 
-- [ ] Define wire receipts: registration `{installation_id, ingestion_token, deletion_token}`; ingestion `{accepted: [id], duplicate: [id], rejected: [{event_id, reason}]}`; deletion `{installation_id, status: "pending"|"completed"}`. Validate exact keys, distinct IDs, bounded token lengths, identity match, and per-event disjoint statuses. No ID outside the claim is permitted. Any malformed receipt acknowledges nothing.
-- [ ] Add fake-transport tests with an injected monotonic clock for 10-second whole-command deadline including registration and upload, slow response reads, TLS errors, redirect refusal, dropped registration responses, 429/5xx backoff, bad credentials/schema suspension, and mixed receipts. Include:
+- [x] Define wire receipts: registration `{installation_id, ingestion_token, deletion_token}`; ingestion `{accepted: [id], duplicate: [id], rejected: [{event_id, reason}]}`; deletion `{installation_id, status: "pending"|"completed"}`. Validate exact keys, distinct IDs, bounded token lengths, identity match, and per-event disjoint statuses. No ID outside the claim is permitted. Any malformed receipt acknowledges nothing.
+- [x] Add fake-transport tests with an injected monotonic clock for 10-second whole-command deadline including registration and upload, slow response reads, TLS errors, redirect refusal, dropped registration responses, 429/5xx backoff, bad credentials/schema suspension, and mixed receipts. Include:
 
 ```python
 def test_response_loss_retries_identical_batch(self):
@@ -265,11 +265,11 @@ def test_response_loss_retries_identical_batch(self):
 ```
 
 The test fixture initializes registered credentials, one pending event, and a fake `request` implementation that records method/path/body and returns or raises each response. `accept_all` decodes the submitted body and returns its event IDs as accepted.
-- [ ] Run `python3 -m unittest discover -s tests -p 'test_remote_transport.py' -v`; expect FAIL.
-- [ ] Implement `http.client.HTTPSConnection` with default TLS context, URL parsing that rejects credentials/query/fragments and non-HTTPS endpoints, no redirect handling, bounded response bodies (64 KiB), `Accept-Encoding: identity`, and remaining-deadline socket timeouts before connect/read operations. Server credentials go in Authorization headers; registration recovery secret is in its bounded JSON body. Use a test fake transport, never a production endpoint environment override.
-- [ ] Persist client-generated identity and 256-bit recovery key before registration. Save returned credentials only if generation remains current. If consent changed while registration was in flight, retain that old registration in the deletion ledger without activating it. Recheck claims immediately before send; do not hold locks across requests.
-- [ ] On retryable errors keep IDs and increase `next_attempt_at` from 60 seconds exponentially to 86,400 seconds; parse integer and HTTP-date `Retry-After`, clamp to that range. On invalid auth/schema suspend; permanent per-event rejection removes only returned IDs. Status reports bounded reason codes without responses/secrets. Delete revokes all known registered epochs, polls pending statuses on later explicit calls, removes credentials only after completion, and retains failures for retry. One 10-second command deadline covers all deletion targets; report remaining targets when exhausted.
-- [ ] Rerun targeted tests; expect PASS. Commit with `feat: add bounded manual analytics transport`.
+- [x] Run `python3 -m unittest discover -s tests -p 'test_remote_transport.py' -v`; expect FAIL.
+- [x] Implement `http.client.HTTPSConnection` with default TLS context, URL parsing that rejects credentials/query/fragments and non-HTTPS endpoints, no redirect handling, bounded response bodies (64 KiB), `Accept-Encoding: identity`, and remaining-deadline socket timeouts before connect/read operations. Server credentials go in Authorization headers; registration recovery secret is in its bounded JSON body. Use a test fake transport, never a production endpoint environment override.
+- [x] Persist client-generated identity and 256-bit recovery key before registration. Save returned credentials only if generation remains current. If consent changed while registration was in flight, retain that old registration in the deletion ledger without activating it. Recheck claims immediately before send; do not hold locks across requests.
+- [x] On retryable errors keep IDs and increase `next_attempt_at` from 60 seconds exponentially to 86,400 seconds; parse integer and HTTP-date `Retry-After`, clamp to that range. On invalid auth/schema suspend; permanent per-event rejection removes only returned IDs. Status reports bounded reason codes without responses/secrets. Delete revokes all known registered epochs, polls pending statuses on later explicit calls, removes credentials only after completion, and retains failures for retry. One 10-second command deadline covers all deletion targets; report remaining targets when exhausted.
+- [x] Rerun targeted tests; expect PASS. Commit with `feat: add bounded manual analytics transport`.
 
 ### Task 5: Expose share controls and coordinate local off/clear
 
@@ -277,8 +277,8 @@ The test fixture initializes registered credentials, one pending event, and a fa
 **Consumes:** Remote store, transport, release constants, existing `_analytics_command` dispatch.
 **Produces:** Six sharing controls and truthful status/disclosure across existing entry points.
 
-- [ ] Add command/native-mode tests for `share`, `on`, `off`, `preview`, `upload`, `delete`, missing/extra arguments, unchanged formatting settings, and zero self-recording. Patch network methods to raise for status/on/off/preview. Test pending erasure output separately from completed erasure.
-- [ ] Add the regression:
+- [x] Add command/native-mode tests for `share`, `on`, `off`, `preview`, `upload`, `delete`, missing/extra arguments, unchanged formatting settings, and zero self-recording. Patch network methods to raise for status/on/off/preview. Test pending erasure output separately from completed erasure.
+- [x] Add the regression:
 
 ```python
 def test_local_off_revokes_pending_sharing(self):
@@ -292,9 +292,9 @@ def test_local_off_revokes_pending_sharing(self):
 ```
 
 Test setup uses isolated local/remote stores and patches release configuration with a synthetic operator/endpoint; `record_prompt()` calls the real local `observe` method.
-- [ ] Run `python3 -m unittest discover -s tests -p 'test_remote_integration.py' -v`; expect FAIL.
-- [ ] Route `rest[0] == "share"` inside `_analytics_command` before native formatting restrictions. Return exact command help for invalid syntax. Introduce `release` constants for endpoint/operator/contact/notice version; unset production values refuse `on/upload` with a useful message. `on` displays the recipient, fields, retention, manual nature, deletion behavior, and pseudonymous identity notice; no network call.
-- [ ] Add invitation persistence/tests before UI changes: first eligible session consumes one notice, settings shows full choices until enable/later/never, later and never suppress automatic invitations, manual settings revisit remains available, and clear/reset/resume/compaction never reset choices. Missing destination, analytics-off, SDK/headless skip, and `HUMAN_PACE=0` suppress automatic notices. If claiming a session notice cannot be persisted, show nothing; storage failure must not cause repeated prompts.
+- [x] Run `python3 -m unittest discover -s tests -p 'test_remote_integration.py' -v`; expect FAIL.
+- [x] Route `rest[0] == "share"` inside `_analytics_command` before native formatting restrictions. Return exact command help for invalid syntax. Introduce `release` constants for endpoint/operator/contact/notice version; unset production values refuse `on/upload` with a useful message. `on` displays the recipient, fields, retention, manual nature, deletion behavior, and pseudonymous identity notice; no network call.
+- [x] Add invitation persistence/tests before UI changes: first eligible session consumes one notice, settings shows full choices until enable/later/never, later and never suppress automatic invitations, manual settings revisit remains available, and clear/reset/resume/compaction never reset choices. Missing destination, analytics-off, SDK/headless skip, and `HUMAN_PACE=0` suppress automatic notices. If claiming a session notice cannot be persisted, show nothing; storage failure must not cause repeated prompts.
 
 ```python
 def test_dismissal_survives_new_sessions_and_clear(self):
@@ -306,13 +306,13 @@ def test_dismissal_survives_new_sessions_and_clear(self):
     self.assertFalse(self.remote.status(now=NOW)["enabled"])
 ```
 
-- [ ] Implement the store invitation interfaces and a shared locked consent helper. `enable` and the Enable sharing button call it; later/never persist only invitation preferences. Make on/explicit off suppress further automatic invitations. Recipient/notice changes suspend sharing and require manual renewed consent while preserving never choice.
-- [ ] In `inject.main`, after existing skip decisions, append a brief invitation only on SessionStart when `invitation(surface="session")` grants it. Point to the settings page and `/pace analytics share on`; ordinary prompts and drift-guard resends do not repeat it. Displaying invitation preferences does not record an invocation or create identity/queue data.
-- [ ] In `preview.render`, inject escaped invitation/status data with actual recipient and manual-upload disclosure. Add accessible settings buttons **Enable sharing**, **Not now**, **Don't ask again**, plus an always-available **Sharing settings** control for manual revisit. Use a separate relative `sharing` POST route beside the existing `save` route, accepting exactly `{action: "enable"|"later"|"never"}`. Require the existing tokenized URL, same-origin Host/Origin checks, JSON content type, bounded body, and no extra fields; reject requests to standalone preview mode. No route enables local recording implicitly. Disable buttons while saving, announce persisted outcomes via `role="status"`, and display busy/unwritable errors without claiming opt-in succeeded. Keep formatting Save independent.
-- [ ] Add real preview-handler tests for each choice, invalid actions/keys, forged Origin/Host/token, oversized bodies, local-off enable refusal, storage failure, repeated settings loads, and zero network calls. Test keyboard-accessible buttons/status text and no consent buttons in standalone rendered previews. Preserve invitation choice through analytics clear and formatting reset. Include the exact disclosure from the spec with recipient/retention/identity/deletion details adjacent to it.
-- [ ] Coordinate local disable inside `AnalyticsStore.configure` under the existing lock: revoke remote generation and purge queue before committing local `enabled=False`. If purge fails, persist disabled sharing first; fail the explicit command accurately and prevent any upload while local recording is off. Implement local clear to revoke outstanding claims and purge the queue under the same lock while preserving remote consent and deletion ledger; new sequence baseline salt prevents collisions after clear. Never remove the remote credential ledger via local file cleanup.
-- [ ] Update `recording_notice` and report strings so enabled sharing says events are queued for manual upload and off says retained remote data can remain. Preserve local report calculations. Scope “nothing uploaded” claims to disabled fresh sharing rather than globally asserting them after prior uploads.
-- [ ] Test consent version/recipient mismatch suspends queuing, reset/native switches preserve consent, concurrent upload/clear/off/new consent preserve generation isolation, and corrupted remote metadata does not block ordinary formatting. Rerun remote integration and local/native tests; expect PASS. Commit with `feat: add explicit analytics sharing controls`.
+- [x] Implement the store invitation interfaces and a shared locked consent helper. `enable` and the Enable sharing button call it; later/never persist only invitation preferences. Make on/explicit off suppress further automatic invitations. Recipient/notice changes suspend sharing and require manual renewed consent while preserving never choice.
+- [x] In `inject.main`, after existing skip decisions, append a brief invitation only on SessionStart when `invitation(surface="session")` grants it. Point to the settings page and `/pace analytics share on`; ordinary prompts and drift-guard resends do not repeat it. Displaying invitation preferences does not record an invocation or create identity/queue data.
+- [x] In `preview.render`, inject escaped invitation/status data with actual recipient and manual-upload disclosure. Add accessible settings buttons **Enable sharing**, **Not now**, **Don't ask again**, plus an always-available **Sharing settings** control for manual revisit. Use a separate relative `sharing` POST route beside the existing `save` route, accepting exactly `{action: "enable"|"later"|"never"}`. Require the existing tokenized URL, same-origin Host/Origin checks, JSON content type, bounded body, and no extra fields; reject requests to standalone preview mode. No route enables local recording implicitly. Disable buttons while saving, announce persisted outcomes via `role="status"`, and display busy/unwritable errors without claiming opt-in succeeded. Keep formatting Save independent.
+- [x] Add real preview-handler tests for each choice, invalid actions/keys, forged Origin/Host/token, oversized bodies, local-off enable refusal, storage failure, repeated settings loads, and zero network calls. Test keyboard-accessible buttons/status text and no consent buttons in standalone rendered previews. Preserve invitation choice through analytics clear and formatting reset. Include the exact disclosure from the spec with recipient/retention/identity/deletion details adjacent to it.
+- [x] Coordinate local disable inside `AnalyticsStore.configure` under the existing lock: revoke remote generation and purge queue before committing local `enabled=False`. If purge fails, persist disabled sharing first; fail the explicit command accurately and prevent any upload while local recording is off. Implement local clear to revoke outstanding claims and purge the queue under the same lock while preserving remote consent and deletion ledger; new sequence baseline salt prevents collisions after clear. Never remove the remote credential ledger via local file cleanup.
+- [x] Update `recording_notice` and report strings so enabled sharing says events are queued for manual upload and off says retained remote data can remain. Preserve local report calculations. Scope “nothing uploaded” claims to disabled fresh sharing rather than globally asserting them after prior uploads.
+- [x] Test consent version/recipient mismatch suspends queuing, reset/native switches preserve consent, concurrent upload/clear/off/new consent preserve generation isolation, and corrupted remote metadata does not block ordinary formatting. Rerun remote integration and local/native tests; expect PASS. Commit with `feat: add explicit analytics sharing controls`.
 
 ### Task 6: Collector persistence and recoverable registration
 
@@ -320,7 +320,7 @@ def test_dismissal_survives_new_sessions_and_clear(self):
 **Consumes:** Shared contract and wire registration format.
 **Produces:** Durable installation/event/deletion tables and collector store methods.
 
-- [ ] Add temporary-SQLite tests for first registration, same recovery key retry, different key collision refusal, credential role separation, process restart, duplicate events, conflicting payload IDs, and transaction rollback. Include:
+- [x] Add temporary-SQLite tests for first registration, same recovery key retry, different key collision refusal, credential role separation, process restart, duplicate events, conflicting payload IDs, and transaction rollback. Include:
 
 ```python
 def test_registration_response_loss_is_recoverable(self):
@@ -331,11 +331,11 @@ def test_registration_response_loss_is_recoverable(self):
         reopened.register("a" * 32, "c" * 64, now=NOW)
 ```
 
-- [ ] Run `python3 -m unittest discover -s tests -p 'test_collector_store.py' -v`; expect FAIL.
-- [ ] Implement `installations` (identity PK, recovery digest, ingestion/deletion token digests, key version, creation/deletion state), `events` (installation/event compound PK, canonical payload/digest/day/received time), and `deletions` (identity PK, request/status/primary completion). Enable foreign keys and WAL; use transactions for registration and ingestion acknowledgement, a finite 1-second SQLite busy timeout, parameterized SQL, and file permissions.
-- [ ] Derive recoverable tokens with server-side HMAC using distinct labels, identity, recovery digest, and key version; store only token digests and compare in constant time. An idempotent registration retry must prove the original random recovery secret before returning the same tokens. Keep server key versions available while their identities/deletion credentials exist; no secrets in source or event tables. Revoked identities never re-register.
-- [ ] Validate all events before opening the ingest transaction; insert valid events with canonical digest, identify duplicates without incrementing usage, reject conflicting IDs, and return committed per-event receipts. Reject forged identity even if event payload is otherwise valid. Recheck revocation inside every transaction.
-- [ ] Rerun targeted tests; expect PASS. Commit with `feat: add durable collector identities and event storage`.
+- [x] Run `python3 -m unittest discover -s tests -p 'test_collector_store.py' -v`; expect FAIL.
+- [x] Implement `installations` (identity PK, recovery digest, ingestion/deletion token digests, key version, creation/deletion state), `events` (installation/event compound PK, canonical payload/digest/day/received time), and `deletions` (identity PK, request/status/primary completion). Enable foreign keys and WAL; use transactions for registration and ingestion acknowledgement, a finite 1-second SQLite busy timeout, parameterized SQL, and file permissions.
+- [x] Derive recoverable tokens with server-side HMAC using distinct labels, identity, recovery digest, and key version; store only token digests and compare in constant time. An idempotent registration retry must prove the original random recovery secret before returning the same tokens. Keep server key versions available while their identities/deletion credentials exist; no secrets in source or event tables. Revoked identities never re-register.
+- [x] Validate all events before opening the ingest transaction; insert valid events with canonical digest, identify duplicates without incrementing usage, reject conflicting IDs, and return committed per-event receipts. Reject forged identity even if event payload is otherwise valid. Recheck revocation inside every transaction.
+- [x] Rerun targeted tests; expect PASS. Commit with `feat: add durable collector identities and event storage`.
 
 ### Task 7: Collector HTTP contract, authentication, and abuse bounds
 
@@ -343,13 +343,13 @@ def test_registration_response_loss_is_recoverable(self):
 **Consumes:** CollectorStore and shared strict JSON parser.
 **Produces:** Four endpoint handlers and internal HTTP adapter with startup configuration validation.
 
-- [ ] Add service tests for all endpoints, missing/wrong bearer credentials, deletion tokens used for ingestion, invalid JSON/schema/identity/day, exact size/count limits, unsupported media/encoding, future dates, unknown routes, and malformed Content-Length. Pin JSON duplicate-key and secret-free errors. Use `handle` directly with synthetic headers/body.
-- [ ] Run `python3 -m unittest discover -s tests -p 'test_collector_service.py' -v`; expect FAIL.
-- [ ] Implement registration POST body `{installation_id, recovery_key}`, authenticated event POST with shared batch envelope, deletion DELETE, and deletion status GET. Require application/json on body requests, Content-Length, no chunked bodies, no compression; cap reads before parsing. Return 400 for invalid envelope, 401 for wrong credentials, 409 for identity recovery conflict, 413 for oversized body, 429 with bounded Retry-After, 503 for storage unavailable. Return structured per-event rejection for bounded invalid event entries; unsupported batch schema suspends the client's upload.
-- [ ] Enforce a maximum of 100 events/256 KiB, 16 KiB individual events, date window `[UTC today-7, UTC today]`, and strict exact integer checks. Limit schema-valid plugin metadata length and sequence to signed 64-bit positive integers. Conflicting sequence IDs within a session return `sequence_conflict`; do not produce ambiguous transitions.
-- [ ] Implement limiter with injected monotonic time: ingress 10 requests/sec burst 20, registration 5/minute per trusted proxy source with 100/minute global cap, ingestion 10 batches/minute and 10,000 accepted events/day per identity, global 1 GiB primary payload cap with 503 backpressure. Use bounded limiter entries and eviction, and reject rather than evict active rate limits under capacity pressure. Source addresses are transient limiter inputs only; never event dimensions. Limit reconnect/registration abuse at the TLS proxy as well.
-- [ ] Implement an internal single-process HTTP server binding `127.0.0.1` by default, socket read timeouts, suppressed default body/header/access logging, and a synthetic integration test with HTTPConnection to its temporary localhost port. A production reverse proxy must provide TLS, request-size/time/concurrency limits, and trusted source headers; refuse externally bound listener unless explicitly configured by the operator. Do not pretend the stdlib listener alone is the production perimeter.
-- [ ] Test concurrent revoke/ingest transaction ordering, SQLite busy errors, limiter persistence strategy (proxy limits survive restarts; service per-identity daily counts derive from SQLite), and bounded errors. Rerun targeted tests; expect PASS. Commit with `feat: expose bounded authenticated analytics collector API`.
+- [x] Add service tests for all endpoints, missing/wrong bearer credentials, deletion tokens used for ingestion, invalid JSON/schema/identity/day, exact size/count limits, unsupported media/encoding, future dates, unknown routes, and malformed Content-Length. Pin JSON duplicate-key and secret-free errors. Use `handle` directly with synthetic headers/body.
+- [x] Run `python3 -m unittest discover -s tests -p 'test_collector_service.py' -v`; expect FAIL.
+- [x] Implement registration POST body `{installation_id, recovery_key}`, authenticated event POST with shared batch envelope, deletion DELETE, and deletion status GET. Require application/json on body requests, Content-Length, no chunked bodies, no compression; cap reads before parsing. Return 400 for invalid envelope, 401 for wrong credentials, 409 for identity recovery conflict, 413 for oversized body, 429 with bounded Retry-After, 503 for storage unavailable. Return structured per-event rejection for bounded invalid event entries; unsupported batch schema suspends the client's upload.
+- [x] Enforce a maximum of 100 events/256 KiB, 16 KiB individual events, date window `[UTC today-7, UTC today]`, and strict exact integer checks. Limit schema-valid plugin metadata length and sequence to signed 64-bit positive integers. Conflicting sequence IDs within a session return `sequence_conflict`; do not produce ambiguous transitions.
+- [x] Implement limiter with injected monotonic time: ingress 10 requests/sec burst 20, registration 5/minute per trusted proxy source with 100/minute global cap, ingestion 10 batches/minute and 10,000 accepted events/day per identity, global 1 GiB primary payload cap with 503 backpressure. Use bounded limiter entries and eviction, and reject rather than evict active rate limits under capacity pressure. Source addresses are transient limiter inputs only; never event dimensions. Limit reconnect/registration abuse at the TLS proxy as well.
+- [x] Implement an internal single-process HTTP server binding `127.0.0.1` by default, socket read timeouts, suppressed default body/header/access logging, and a synthetic integration test with HTTPConnection to its temporary localhost port. A production reverse proxy must provide TLS, request-size/time/concurrency limits, and trusted source headers; refuse externally bound listener unless explicitly configured by the operator. Do not pretend the stdlib listener alone is the production perimeter.
+- [x] Test concurrent revoke/ingest transaction ordering, SQLite busy errors, limiter persistence strategy (proxy limits survive restarts; service per-identity daily counts derive from SQLite), and bounded errors. Rerun targeted tests; expect PASS. Commit with `feat: expose bounded authenticated analytics collector API`.
 
 ### Task 8: Deletion, retention, backup journal, and safe restore
 
@@ -357,13 +357,13 @@ def test_registration_response_loss_is_recoverable(self):
 **Consumes:** Installation revocation state and committed events.
 **Produces:** Immediate report exclusion, primary cleanup, independently retained deletion journal, maintenance/restore CLI.
 
-- [ ] Add tests for duplicate delete, pre-registration delete, offline client delete retry, immediately excluded events, completion after purge, 90-day retention, revoked ingestion, and replaying a deletion newer than a backup. Test journal append/fsync failure refuses acknowledgement and does not claim completed erasure.
-- [ ] Run `python3 -m unittest discover -s tests -p 'test_collector_maintenance.py' -v`; expect FAIL.
-- [ ] In deletion processing, revoke in SQLite before journal append; append a minimal identity/request-time/key-version tombstone to a private journal outside database backup snapshots and fsync before returning pending. If journal append fails, identity remains revoked, return 503, and idempotent retry repairs the journal. Ingestion must never clear that state. Maintain an external monotonic journal checkpoint so restoring a stale/missing journal fails closed.
-- [ ] `maintain` removes revoked event rows and any contribution/cache rows before marking primary completion; deletes event days older than the inclusive 90-day range `[today-89, today]`; preserves revocation/token digests for deletion status without payloads. No derived cache in v1; report directly from live events.
-- [ ] `restore` requires server stopped and fresh independently retained journal/checkpoint, restores to a separate file, replays all tombstones transactionally, purges expired/revoked data, validates foreign keys and integrity, then swaps the database. Missing or stale journal keeps reporting/ingestion disabled. Use a readiness marker created only after replay, never copied from backups.
-- [ ] Implement the following operator CLI forms, using these proposed paths in the runbook example: `python3 -m collector.maintenance maintain --database /srv/human-pace/events.sqlite3 --journal /srv/human-pace-deletions/journal.jsonl --key-file /srv/human-pace-secrets/collector.key` and `python3 -m collector.maintenance restore --database /srv/human-pace/events.sqlite3 --backup /srv/human-pace-backups/latest.sqlite3 --journal /srv/human-pace-deletions/journal.jsonl --key-file /srv/human-pace-secrets/collector.key`. Read key material from private files, never command arguments or logs. Document hourly maintenance with a daily retention sweep, failure alerts, 24-hour primary deadline, backup rotation/deletion at 30 days, journal/key custody, and restoration drills. Verify the example paths and the journal's independent storage against the selected deployment before collecting-release activation.
-- [ ] Execute the synthetic restore test and targeted tests; expect PASS. Commit with `feat: enforce analytics erasure and retention lifecycle`.
+- [x] Add tests for duplicate delete, pre-registration delete, offline client delete retry, immediately excluded events, completion after purge, 90-day retention, revoked ingestion, and replaying a deletion newer than a backup. Test journal append/fsync failure refuses acknowledgement and does not claim completed erasure.
+- [x] Run `python3 -m unittest discover -s tests -p 'test_collector_maintenance.py' -v`; expect FAIL.
+- [x] In deletion processing, revoke in SQLite before journal append; append a minimal identity/request-time/key-version tombstone to a private journal outside database backup snapshots and fsync before returning pending. If journal append fails, identity remains revoked, return 503, and idempotent retry repairs the journal. Ingestion must never clear that state. Maintain an external monotonic journal checkpoint so restoring a stale/missing journal fails closed.
+- [x] `maintain` removes revoked event rows and any contribution/cache rows before marking primary completion; deletes event days older than the inclusive 90-day range `[today-89, today]`; preserves revocation/token digests for deletion status without payloads. No derived cache in v1; report directly from live events.
+- [x] `restore` requires server stopped and fresh independently retained journal/checkpoint, restores to a separate file, replays all tombstones transactionally, purges expired/revoked data, validates foreign keys and integrity, then swaps the database. Missing or stale journal keeps reporting/ingestion disabled. Use a readiness marker created only after replay, never copied from backups.
+- [x] Implement the following operator CLI forms, using these proposed paths in the runbook example: `python3 -m collector.maintenance maintain --database /srv/human-pace/events.sqlite3 --journal /srv/human-pace-deletions/journal.jsonl --key-file /srv/human-pace-secrets/collector.key` and `python3 -m collector.maintenance restore --database /srv/human-pace/events.sqlite3 --backup /srv/human-pace-backups/latest.sqlite3 --journal /srv/human-pace-deletions/journal.jsonl --key-file /srv/human-pace-secrets/collector.key`. Read key material from private files, never command arguments or logs. Document hourly maintenance with a daily retention sweep, failure alerts, 24-hour primary deadline, backup rotation/deletion at 30 days, journal/key custody, and restoration drills. Verify the example paths and the journal's independent storage against the selected deployment before collecting-release activation.
+- [x] Execute the synthetic restore test and targeted tests; expect PASS. Commit with `feat: enforce analytics erasure and retention lifecycle`.
 
 ### Task 9: Maintainer aggregation and suppression
 
@@ -371,8 +371,8 @@ def test_registration_response_loss_is_recoverable(self):
 **Consumes:** Validated non-revoked retained events; existing normalization semantics.
 **Produces:** Pure summaries plus operator CLI `python3 -m collector.report --database PATH --start YYYY-MM-DD --end YYYY-MM-DD`.
 
-- [ ] Add deterministic multi-identity fixtures with A,A,B,B,A prompt runs, missing sequence 3, enabled/off settings, unknown sessions, saved/observed changes, ratings, mature and immature cohorts, and uneven prompt volumes. Ensure per-configuration contributor count can differ from whole-report installation count.
-- [ ] Include an independently checkable fixture:
+- [x] Add deterministic multi-identity fixtures with A,A,B,B,A prompt runs, missing sequence 3, enabled/off settings, unknown sessions, saved/observed changes, ratings, mature and immature cohorts, and uneven prompt volumes. Ensure per-configuration contributor count can differ from whole-report installation count.
+- [x] Include an independently checkable fixture:
 
 ```python
 def test_prompt_weighting_and_installation_adoption_are_distinct(self):
@@ -386,11 +386,11 @@ def test_prompt_weighting_and_installation_adoption_are_distinct(self):
     self.assertNotIn(key, report.render(s))  # fewer than five contributors
 ```
 
-- [ ] Run `python3 -m unittest discover -s tests -p 'test_collector_report.py' -v`; expect FAIL.
-- [ ] Compute reporting/active identities, exposure numerator/denominator including off, enabled-only share, distinct installation adoption, separate editing/observation counts, active days, score histograms/means/sample identities, and invocation/error observations. Return raw rational pairs for shares; render no percentage on zero denominator. Session keys combine identity and HMAC; transitions require adjacent sequence values and collapse equal runs. Stop transitions across gaps.
-- [ ] Implement first-observed cohort day using all retained live history, not only the selected report window. Count follow-up on days 7–13 only when day 13 has elapsed; label first observed rather than first installed. Disclose that history older than retention is unavailable and late uploads may change cohorts. Results never link consent epochs.
-- [ ] Render a fixed complete-window report with no arbitrary cross-filter or drilldown API. Suppress slices below five identities and apply complementary suppression: if visible totals and siblings would reveal a suppressed count, hide the parent total or an additional sibling. With fewer than five active contributors suppress all comparative metrics; ingestion health counts remain operator-only. Mark fewer than five ratings sparse. No raw events in report output.
-- [ ] Keep reports a private filesystem CLI, no HTTP report endpoint. `live_events` excludes revoked identities in SQL and requires restore readiness; fresh queries after deletion have no stale cache. Test deletion-before-render and complement/subtraction cases. Rerun tests; expect PASS. Commit with `feat: report remote usage with explicit denominators`.
+- [x] Run `python3 -m unittest discover -s tests -p 'test_collector_report.py' -v`; expect FAIL.
+- [x] Compute reporting/active identities, exposure numerator/denominator including off, enabled-only share, distinct installation adoption, separate editing/observation counts, active days, score histograms/means/sample identities, and invocation/error observations. Return raw rational pairs for shares; render no percentage on zero denominator. Session keys combine identity and HMAC; transitions require adjacent sequence values and collapse equal runs. Stop transitions across gaps.
+- [x] Implement first-observed cohort day using all retained live history, not only the selected report window. Count follow-up on days 7–13 only when day 13 has elapsed; label first observed rather than first installed. Disclose that history older than retention is unavailable and late uploads may change cohorts. Results never link consent epochs.
+- [x] Render a fixed complete-window report with no arbitrary cross-filter or drilldown API. Suppress slices below five identities and apply complementary suppression: if visible totals and siblings would reveal a suppressed count, hide the parent total or an additional sibling. With fewer than five active contributors suppress all comparative metrics; ingestion health counts remain operator-only. Mark fewer than five ratings sparse. No raw events in report output.
+- [x] Keep reports a private filesystem CLI, no HTTP report endpoint. `live_events` excludes revoked identities in SQL and requires restore readiness; fresh queries after deletion have no stale cache. Test deletion-before-render and complement/subtraction cases. Rerun tests; expect PASS. Commit with `feat: report remote usage with explicit denominators`.
 
 ### Task 10: Complete lifecycle fixtures and latency budget
 
@@ -398,12 +398,12 @@ def test_prompt_weighting_and_installation_adoption_are_distinct(self):
 **Consumes:** Finished client, collector handler, reports and maintenance.
 **Produces:** End-to-end synthetic evidence for every spec acceptance criterion.
 
-- [ ] Add a service-adapter fake transport that routes the real client requests to `collector.service.handle`, preserving headers/body/receipts and simulating dropped replies. Exercise registration→prompt/rating/config events→preview→upload→duplicate retry→report→off/new epoch→delete all→purge→restore. Assert no local history backfill, no secrets/notes/paths in stored payloads, and every ledger identity receives deletion.
-- [ ] Test disk/lock/queue corruption failures through real hook/pace/settings entry points. Race claim/off/clear/re-enable and server revoke/ingest using barriers rather than sleeps. Assert functional settings save/rating output remains correct and hooks emit no analytics stdout.
-- [ ] Run `python3 -m unittest discover -s tests -p 'test_remote_integration.py' -v`; require PASS after fixing any lifecycle defect in its owning module.
-- [ ] Implement benchmark CLI with `--iterations 1000`, TemporaryDirectory, synthetic events, `perf_counter_ns`, warmup, and paired measurements for local append with sharing off versus on. Report median/p95 incremental queue time, Python version, OS, filesystem, iterations, and dropped count. Do not make any network call. Measure empty, half-full and capped queues; no full history scans on hooks.
-- [ ] Run `python3 scripts/benchmark_remote_queue.py --iterations 1000`; record evidence against under 5 ms median/20 ms p95 incremental budget on the named machine. If not met, profile queue metadata/locking; do not move networking into hooks.
-- [ ] Run `python3 -m unittest discover -s tests -v`, `python3 scripts/export_openai.py --check`, and `git diff --check`. CI already discovers `test_*.py` on 3.9/3.12; keep that matrix and ensure collector imports work there. Commit verified changes with `test: verify remote analytics lifecycle and overhead`.
+- [x] Add a service-adapter fake transport that routes the real client requests to `collector.service.handle`, preserving headers/body/receipts and simulating dropped replies. Exercise registration→prompt/rating/config events→preview→upload→duplicate retry→report→off/new epoch→delete all→purge→restore. Assert no local history backfill, no secrets/notes/paths in stored payloads, and every ledger identity receives deletion.
+- [x] Test disk/lock/queue corruption failures through real hook/pace/settings entry points. Race claim/off/clear/re-enable and server revoke/ingest using barriers rather than sleeps. Assert functional settings save/rating output remains correct and hooks emit no analytics stdout.
+- [x] Run `python3 -m unittest discover -s tests -p 'test_remote_integration.py' -v`; require PASS after fixing any lifecycle defect in its owning module.
+- [x] Implement benchmark CLI with `--iterations 1000`, TemporaryDirectory, synthetic events, `perf_counter_ns`, warmup, and paired measurements for local append with sharing off versus on. Report median/p95 incremental queue time, Python version, OS, filesystem, iterations, and dropped count. Do not make any network call. Measure empty, half-full and capped queues; no full history scans on hooks.
+- [x] Run `python3 scripts/benchmark_remote_queue.py --iterations 1000`; record evidence against under 5 ms median/20 ms p95 incremental budget on the named machine. If not met, profile queue metadata/locking; do not move networking into hooks.
+- [x] Run `python3 -m unittest discover -s tests -v`, `python3 scripts/export_openai.py --check`, and `git diff --check`. CI already discovers `test_*.py` on 3.9/3.12; keep that matrix and ensure collector imports work there. Commit verified changes with `test: verify remote analytics lifecycle and overhead`.
 
 ### Task 11: User documentation and deployment readiness handoff
 
@@ -411,7 +411,7 @@ def test_prompt_weighting_and_installation_adoption_are_distinct(self):
 **Consumes:** Actual implemented defaults and verified lifecycle behavior.
 **Produces:** Reviewable collecting-release checklist with no live deployment.
 
-- [ ] Document the one-time invitation, all three choices, persistent dismissal and manual revisit; document all share commands, local-default-on/remote-default-off distinction, field allowlist, manual cadence, oldest-event eviction/expiry behavior, epoch linkability, current coverage, and off versus deletion versus clear. Include a concrete walkthrough:
+- [x] Document the one-time invitation, all three choices, persistent dismissal and manual revisit; document all share commands, local-default-on/remote-default-off distinction, field allowlist, manual cadence, oldest-event eviction/expiry behavior, epoch linkability, current coverage, and off versus deletion versus clear. Include a concrete walkthrough:
 
 ```text
 /pace analytics share
@@ -424,10 +424,10 @@ def test_prompt_weighting_and_installation_adoption_are_distinct(self):
 # Rerun delete to check pending requests or retry failed identities.
 ```
 
-- [ ] Document receipt-loss recovery, support for pending deletion, and the fact that losing credential files prevents authenticated deletion through the client. Never imply local clear erases server data or preview is a raw historical export.
-- [ ] Complete the readiness checklist as unchecked deployment actions: choose operator/provider/region/budget; install TLS proxy/limits; provision versioned server keys and separate journal; verify no payload/token logging and 7-day security logs; schedule/alert maintenance; enforce 30-day backup expiry; run restore drill; set actual release endpoint/operator/contact/notice fingerprint; review notice; invite explicit pilot participation. These are operator actions required before real collection, not invented values in code.
-- [ ] Map spec acceptance criteria 1–10 to test modules and the benchmark output in the operations document. Record the 30-day pilot usefulness assessment: at least five contributing identities in main comparisons; insufficient manual coverage leads to a separate scheduled-upload design.
-- [ ] Run `git diff --check` and inspect documentation for stale unconditional “nothing is uploaded” guarantees. Leave only statements accurate under sharing state. Commit documentation with `docs: explain remote analytics controls and launch requirements`.
+- [x] Document receipt-loss recovery, support for pending deletion, and the fact that losing credential files prevents authenticated deletion through the client. Never imply local clear erases server data or preview is a raw historical export.
+- [x] Complete the readiness checklist as unchecked deployment actions: choose operator/provider/region/budget; install TLS proxy/limits; provision versioned server keys and separate journal; verify no payload/token logging and 7-day security logs; schedule/alert maintenance; enforce 30-day backup expiry; run restore drill; set actual release endpoint/operator/contact/notice fingerprint; review notice; invite explicit pilot participation. These are operator actions required before real collection, not invented values in code.
+- [x] Map spec acceptance criteria 1–10 to test modules and the benchmark output in the operations document. Record the 30-day pilot usefulness assessment: at least five contributing identities in main comparisons; insufficient manual coverage leads to a separate scheduled-upload design.
+- [x] Run `git diff --check` and inspect documentation for stale unconditional “nothing is uploaded” guarantees. Leave only statements accurate under sharing state. Commit documentation with `docs: explain remote analytics controls and launch requirements`.
 
 ## Completion and handoff
 

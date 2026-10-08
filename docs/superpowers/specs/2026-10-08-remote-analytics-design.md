@@ -1,7 +1,7 @@
 # Remote usage analytics gathering
 
 Date: 2026-10-08
-Status: Proposed for review; no collection is enabled by this document
+Status: Implemented for synthetic validation; collecting-release deployment remains unconfigured
 Dependency: [Local usage analytics](2026-10-08-local-analytics-design.md)
 
 ## Problem and intended outcome
