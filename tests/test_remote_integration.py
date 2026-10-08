@@ -1,0 +1,44 @@
+import io
+import json
+import os
+import tempfile
+import unittest
+from pathlib import Path
+from unittest.mock import patch
+from remote_test_support import NOW, RELEASE, analytics, pc
+import pace_remote_store as r
+import pace
+import inject
+import preview
+class IntegrationTest(unittest.TestCase):
+    def setUp(self):
+        tmp=tempfile.TemporaryDirectory();self.addCleanup(tmp.cleanup)
+        self.root=Path(tmp.name)/'analytics';self.local=analytics.AnalyticsStore(self.root);self.remote=r.RemoteStore(self.root)
+        for p in [patch.dict(os.environ,{'HUMAN_PACE_ANALYTICS_DIR':str(self.root),'HUMAN_PACE_CONFIG':str(Path(tmp.name)/'config.json')}),patch.object(r,'RELEASE',RELEASE)]:
+            p.start();self.addCleanup(p.stop)
+    def enable(self):self.remote.enable(now=NOW,local_enabled=True,release=RELEASE)
+    def record_prompt(self):return self.local.observe(event='UserPromptSubmit',cfg=pc.defaults(),config_source='commands',session_id='session',now=NOW)
+    def test_default_local_recording_does_not_queue(self):
+        self.assertTrue(self.record_prompt());self.assertFalse((self.root/'remote').exists())
+    def test_successful_recording_queues_and_local_off_stops_sharing(self):
+        self.record_prompt();self.enable();self.record_prompt();self.record_prompt()
+        body=json.loads(self.remote.preview(now=NOW));self.assertEqual(len([x for x in body['events'] if x['event']=='prompt_observed']),2)
+        pace.run(['analytics','off'],now=NOW)
+        self.assertFalse(self.remote.status(now=NOW)['enabled']);self.assertEqual(self.remote.status(now=NOW)['queued_count'],0)
+        pace.run(['analytics','on'],now=NOW);self.assertFalse(self.remote.status(now=NOW)['enabled'])
+    def test_clear_preserves_consent_and_notes_excluded(self):
+        self.enable();pace.run(['rate','5','secret-note'],now=NOW)
+        self.assertGreater(self.remote.status(now=NOW)['queued_count'],0)
+        self.assertNotIn(b'secret-note',self.remote.preview(now=NOW))
+        self.local.clear(now=NOW);self.assertEqual(self.remote.status(now=NOW)['queued_count'],0)
+        self.assertTrue(self.remote.status(now=NOW)['enabled'])
+    def test_controls_never_record_and_invitation_only_once(self):
+        pace.run(['analytics','share','on'],now=NOW)
+        self.assertTrue(self.remote.status(now=NOW)['enabled']);self.assertEqual(self.remote.status(now=NOW)['queued_count'],0)
+        pace.run(['analytics','share','off'],now=NOW)
+        self.assertFalse(self.remote.status(now=NOW)['enabled'])
+    def test_queue_failure_does_not_break_local_recording(self):
+        self.enable()
+        with patch.object(r.RemoteStore,'enqueue_locked',side_effect=OSError('secret')):
+            self.assertTrue(self.record_prompt())
+        self.assertGreater(len(self.local.read(now=NOW,days=1)['events']),0)

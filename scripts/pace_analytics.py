@@ -288,6 +288,10 @@ class AnalyticsStore:
                 prefs['enabled'] = enabled
             if retention_days is not None:
                 prefs['retention_days'] = retention_days
+            if enabled is False:
+                from pace_remote_store import RemoteStore
+                if (self.root / 'remote' / 'preferences.json').exists():
+                    RemoteStore(self.root)._disable_locked(datetime.now(timezone.utc))
             if prefs['enabled']:
                 self._secret()
             self._atomic('preferences.json', json.dumps(prefs).encode())
@@ -325,7 +329,10 @@ class AnalyticsStore:
             if not self.preferences()['enabled']:
                 return False
             with self._lock():
-                return self.preferences()['enabled'] and self._append(events, now)
+                if not self.preferences()['enabled'] or not self._append(events, now):
+                    return False
+                self._after_append_locked(events, now)
+                return True
         except Exception:
             return False
 
@@ -358,11 +365,19 @@ class AnalyticsStore:
                     events.append(make_event('prompt_observed', enabled=any(cfg[k] for k in pc.SWITCHES) or cfg['length'] > 0, **common))
                 if not self._append(events, now):
                     return False
+                self._after_append_locked(events, now)
                 if key:
                     self._atomic('state-' + key + '.json', json.dumps({'settings': cfg, 'timestamp': now.isoformat()}).encode())
                 return True
         except Exception:
             return False
+
+    def _after_append_locked(self, events, now):
+        try:
+            from pace_remote_store import RemoteStore
+            RemoteStore(self.root).enqueue_locked(events, now=now)
+        except Exception:
+            pass  # Remote failure never changes local recording or the user's action.
 
     def _maintain(self, now: datetime):
         cutoff = now - timedelta(days=self.preferences()['retention_days'])
@@ -395,6 +410,8 @@ class AnalyticsStore:
     def clear(self, *, now: datetime) -> None:
         utc(now)
         with self._lock():
+            from pace_remote_store import RemoteStore
+            RemoteStore(self.root).clear_pending_locked(now=now)
             for path in self.root.iterdir():
                 if (re.fullmatch(r'(?:events-\d{4}-\d{2}-\d{2}\.jsonl|state-[0-9a-f]{64}\.json|capped-\d{4}-\d{2}-\d{2})', path.name)
                         and not path.is_symlink() and path.is_file()):
