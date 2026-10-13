@@ -11,6 +11,11 @@
 - Keep inactive bionic settings together and report drift guard separately;
   distinguish observed changes from saves and disclose integration coverage.
 
+## 0.10.1 — 2026-10-13
+
+- Honor read-aloud requests with plain text and intact words, overriding visual formatting until the user asks to resume it.
+- Document how to request a fresh plain-text reply before using speech playback.
+
 ## 0.10.0 — 2026-10-07
 
 - Prefer the connected embedded MCP settings tool when opening settings or preview.

@@ -7,6 +7,8 @@ Apply human-pace to replies in the current conversation until the user changes o
 disables it. Read [settings.md](references/settings.md) for the formatting rules.
 Start with preset focus: bionic on using third, anchor trigger 8, answerFirst on,
 chunks on, actionMarkers on, prose length 200. Follow explicit user preferences.
+Read-aloud requests override visual formatting until the user asks to resume it,
+as specified in the common rule; do not claim to detect playback or save this preference.
 
 Treat `/pace ...` or an equivalent natural-language request as a settings request
 when routed to this skill. It is conversational syntax, not a registered slash
