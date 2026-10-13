@@ -19,7 +19,7 @@ See [local usage analytics](#local-usage-analytics) for recorded fields and cont
 
 **Re**quires `python3` (3.9+). **Wi**thout **i**t **t**he **pl**ugin **do**es **no**thing, **a**nd **yo**ur **pr**ompts **a**re **ne**ver **bl**ocked.
 
-**Co**ntext **co**st: **un**der 200 **to**kens **o**f **ru**les, **se**nt **on**ce **p**er **se**ssion **a**nd **ag**ain **ev**ery 10 **pr**ompts, **pl**us **ab**out 40 **f**or **t**he `/pace` **co**mmand.
+**Co**ntext **co**st: **un**der 300 **to**kens **o**f **ru**les, **se**nt **on**ce **p**er **se**ssion **a**nd **ag**ain **ev**ery 10 **pr**ompts, **pl**us **ab**out 40 **f**or **t**he `/pace` **co**mmand.
 **Wi**th `/pace off` **no**thing **i**s **se**nt.
 
 ## Use
@@ -45,6 +45,18 @@ See [local usage analytics](#local-usage-analytics) for recorded fields and cont
 
 **He**adless **ru**ns (`claude -p`, **t**he **Ag**ent **S**DK) **a**re **sk**ipped, **s**o **sc**ripts **a**nd **C**I **g**et **pl**ain **ou**tput.
 **S**et `HUMAN_PACE=1` **t**o **fo**rce **t**he **ru**les **o**n **th**ere, **o**r `HUMAN_PACE=0` **t**o **tu**rn **th**em **o**ff **eve**rywhere.
+
+### Read-aloud output
+
+Before using Claude’s Read out feature, ask: “Use plain text for read aloud.”
+Human-pace then uses ordinary letters, intact words, short sentences and plain
+paragraphs, overriding bionic bolding, gradients and action symbols for the rest
+of the chat. Ask to resume visual formatting when you want it back.
+
+Partial-word bolding can interfere with speech playback. Human-pace cannot detect
+when you press Read out or change Claude’s speech engine. Request a fresh plain-text
+version of an existing reply before playing it; the original reply stays unchanged.
+This is a conversational preference, not a saved `/pace` setting.
 
 ## Local usage analytics
 
@@ -280,7 +292,7 @@ python3 compliance/run.py                    # score real replies (calls claude 
 python3 compliance/run.py --approach vowels  # score one approach; also --anchor-trigger <n>
 ```
 
-**Ru**le **wo**rding **li**ves **i**n `rules/*.md`. **Ke**ep **a**ll **fra**gments **to**gether **un**der 700 **cha**racters **p**er **ap**proach.
+**Ru**le **wo**rding **li**ves **i**n `rules/*.md`. **Ke**ep **a**ll **fra**gments **to**gether **un**der 1000 **cha**racters **p**er **ap**proach.
 
 ## License
 

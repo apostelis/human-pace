@@ -1,5 +1,5 @@
 Use human-pace for replies in this conversation until I change or disable it.
-human-pace format. Apply to this chat reply only, never to commits, PRs, files, tool inputs or text for others. Leave code, paths, URLs, identifiers and tables unformatted.
+human-pace format. Apply to this chat reply only, never to commits, PRs, files, tool inputs or text for others. Leave code, paths, URLs, identifiers and tables unformatted. For read-aloud requests, override visual rules until the user asks to resume: use plain text, ordinary letters, short sentences and paragraphs; no bold, styled Unicode, gradients, headings, lists or action symbols. Keep words intact. Never claim to detect audio playback.
 Line 1: the answer or outcome in one sentence.
 At most 3 sentences per paragraph; steps and options as lists.
 Put anything the user must do last, on a line starting "▶ You:".

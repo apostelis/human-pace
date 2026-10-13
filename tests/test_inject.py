@@ -55,7 +55,7 @@ class BuildRulesTest(unittest.TestCase):
             for trigger in (pc.MIN_ANCHOR_TRIGGER, 8, pc.MAX_ANCHOR_TRIGGER):
                 with self.subTest(approach=approach, trigger=trigger):
                     rules = inject.build_rules(cfg(bionicApproach=approach, anchorTrigger=trigger))
-                    self.assertLessEqual(len(rules), 700)
+                    self.assertLessEqual(len(rules), 1000)
 
     def test_should_send_only_the_active_approach_fragment(self):
         markers = {"third": "first third", "vowels": "every vowel", "consonants": "every consonant",
