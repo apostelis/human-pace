@@ -181,6 +181,16 @@ def main(stdin=sys.stdin, stdout=sys.stdout, env: Mapping[str, str] = os.environ
                 pass
         text = rules_to_send(event, build_rules(cfg, config_error=error), hook_input.get("session_id"),
                              cfg["driftGuard"])
+        if event == 'SessionStart':
+            try:
+                import pace_remote_store as remote
+                local_store = analytics.default_store({**os.environ, **env})
+                notice = remote.RemoteStore(local_store.root).invitation(surface='session', now=datetime.now(timezone.utc),
+                    local_enabled=local_store.preferences()['enabled'], release=remote.RELEASE)
+                if notice['visible']:
+                    text += "\nHelp improve Human Pace: optional usage sharing excludes prompts, replies and rating notes. Enable in Human Pace settings or /pace analytics share on; uploads are manual."
+            except Exception:
+                pass
         if text:
             stdout.write(hook_output(text, event))
     except Exception:

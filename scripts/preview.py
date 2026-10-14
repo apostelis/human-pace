@@ -17,12 +17,45 @@ import pace_analytics as analytics
 from datetime import datetime, timezone
 
 
-def render(cfg):
+def render(cfg, *, settings=False):
     template = (Path(__file__).resolve().parent.parent / 'preview' / 'index.html').read_text()
     # JSON is embedded in script text, where HTML closing tags must be escaped.
     passages = json.loads((Path(__file__).resolve().parent.parent / 'preview' / 'passages.json').read_text())
-    return (template.replace('__ANALYTICS_NOTICE__', html.escape(analytics.recording_notice())).replace('__CONFIG__', json.dumps(cfg).replace('<', '\\u003c'))
+    controls = ''
+    if settings:
+        try:
+            import pace_remote_store as remote
+            store = analytics.default_store()
+            notice = remote.RemoteStore(store.root).invitation(surface='settings', now=datetime.now(timezone.utc),
+                local_enabled=store.preferences()['enabled'], release=remote.RELEASE)
+            controls = sharing_controls(notice, remote.RELEASE)
+        except Exception:
+            controls = '<p>Sharing settings unavailable; check /pace analytics share.</p>'
+    return (template.replace('__SHARING_CONTROLS__', controls).replace('__ANALYTICS_NOTICE__' , html.escape(analytics.recording_notice())).replace('__CONFIG__', json.dumps(cfg).replace('<', '\\u003c'))
             .replace('__PASSAGES__', json.dumps(passages).replace('<', '\\u003c')))
+
+
+def sharing_controls(notice, release):
+    import pace_remote_store as remote
+    if not remote.valid_release(release):
+        return '<p class="muted">Remote sharing is unavailable until a collecting release is configured.</p>'
+    opened = ' open' if notice['visible'] else ''
+    content = html.escape(remote.disclosure(release))
+    return f'''<details id="sharing-panel"{opened}><summary>Sharing settings</summary>
+<p>{content}</p><button type="button" data-share="enable">Enable sharing</button>
+<button type="button" data-share="later">Not now</button>
+<button type="button" data-share="never">Don't ask again</button>
+<p id="sharing-status" role="status"></p></details>
+<script>
+document.querySelectorAll('[data-share]').forEach(button=>button.addEventListener('click',async()=>{{
+const buttons=document.querySelectorAll('[data-share]');buttons.forEach(b=>b.disabled=true);
+const status=document.getElementById('sharing-status');status.textContent='Saving choice…';
+try{{const response=await fetch(new URL('sharing',location.href),{{method:'POST',headers:{{'Content-Type':'application/json'}},body:JSON.stringify({{action:button.dataset.share}})}});
+const result=await response.json();if(!response.ok)throw new Error(result.message||'Sharing choice failed.');status.textContent=result.message;
+}}catch(error){{status.textContent='Could not save sharing choice: '+error.message;}}
+finally{{buttons.forEach(b=>b.disabled=false);}}
+}}));
+</script>'''
 
 
 def preview_config():
@@ -104,20 +137,30 @@ def create_server(token):
             if not self.authorized() or self.path != "/" + token + "/":
                 self.respond(403, '{}')
                 return
-            self.respond(200, render(preview_config()), "text/html; charset=utf-8")
+            self.respond(200, render(preview_config(), settings=True), "text/html; charset=utf-8")
 
         def do_POST(self):
-            if not self.authorized() or self.path != "/" + token + "/save":
+            if not self.authorized() or self.path not in ("/" + token + "/save", "/" + token + "/sharing"):
                 self.respond(403, '{}')
                 return
             try:
                 length = int(self.headers.get("Content-Length", "0"))
                 if not 0 < length <= 8192 or self.headers.get("Content-Type") != "application/json":
                     raise ValueError("Expected a small JSON settings object.")
-                data = json.loads(self.rfile.read(length))
-                message = save_settings(data)
+                from pace_remote_contract import strict_json
+                data = strict_json(self.rfile.read(length), max_bytes=8192)
+                if self.path.endswith('/sharing'):
+                    import pace_remote_store as remote
+                    if not isinstance(data, dict) or set(data) != {'action'} or data['action'] not in ('enable','later','never'):
+                        raise ValueError('Invalid sharing action.')
+                    store = analytics.default_store()
+                    remote.RemoteStore(store.root).choose_invitation(data['action'], now=datetime.now(timezone.utc),
+                        local_enabled=store.preferences()['enabled'], release=remote.RELEASE)
+                    message = 'Sharing enabled; future events queued for manual upload.' if data['action']=='enable' else 'Invitation dismissed. Sharing settings remain available here.'
+                else:
+                    message = save_settings(data)
                 self.respond(200, json.dumps({"message": message}))
-            except (ValueError, OSError, subprocess.SubprocessError) as error:
+            except (ValueError, OSError, analytics.AnalyticsError, subprocess.SubprocessError) as error:
                 self.respond(400, json.dumps({"message": str(error)}))
 
     server = HTTPServer(("127.0.0.1", 0), Handler)

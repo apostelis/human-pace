@@ -1,0 +1,1458 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Human Pace remote event v1",
+  "description": "Configuration hashes, enabled flag, and changed fields additionally require semantic Python validation.",
+  "oneOf": [
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "event_id",
+        "installation_id",
+        "event",
+        "day",
+        "plugin_version",
+        "integration",
+        "source",
+        "session_key",
+        "operation",
+        "outcome"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "event_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{32}$"
+        },
+        "installation_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{32}$"
+        },
+        "event": {
+          "const": "command_invoked"
+        },
+        "day": {
+          "type": "string",
+          "format": "date",
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+        },
+        "plugin_version": {
+          "type": "string",
+          "maxLength": 64,
+          "pattern": "^(unknown|[0-9]+\\.[0-9]+\\.[0-9]+([-+.][\\w.-]+)?)$"
+        },
+        "integration": {
+          "enum": [
+            "claude",
+            "unknown"
+          ]
+        },
+        "source": {
+          "enum": [
+            "hook",
+            "pace",
+            "preview"
+          ]
+        },
+        "session_key": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            }
+          ]
+        },
+        "operation": {
+          "enum": [
+            "anchor_trigger",
+            "approach",
+            "drift_guard",
+            "gradient",
+            "length",
+            "preset",
+            "preview",
+            "rate",
+            "reset",
+            "settings_open",
+            "settings_save",
+            "status",
+            "toggle",
+            "unknown"
+          ]
+        },
+        "outcome": {
+          "enum": [
+            "success",
+            "invalid",
+            "error"
+          ]
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "event_id",
+        "installation_id",
+        "event",
+        "day",
+        "plugin_version",
+        "integration",
+        "source",
+        "session_key",
+        "operation",
+        "outcome",
+        "settings",
+        "config_source",
+        "normalization_version",
+        "config_id",
+        "format_config_id"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "event_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{32}$"
+        },
+        "installation_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{32}$"
+        },
+        "event": {
+          "const": "command_invoked"
+        },
+        "day": {
+          "type": "string",
+          "format": "date",
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+        },
+        "plugin_version": {
+          "type": "string",
+          "maxLength": 64,
+          "pattern": "^(unknown|[0-9]+\\.[0-9]+\\.[0-9]+([-+.][\\w.-]+)?)$"
+        },
+        "integration": {
+          "enum": [
+            "claude",
+            "unknown"
+          ]
+        },
+        "source": {
+          "enum": [
+            "hook",
+            "pace",
+            "preview"
+          ]
+        },
+        "session_key": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            }
+          ]
+        },
+        "operation": {
+          "enum": [
+            "anchor_trigger",
+            "approach",
+            "drift_guard",
+            "gradient",
+            "length",
+            "preset",
+            "preview",
+            "rate",
+            "reset",
+            "settings_open",
+            "settings_save",
+            "status",
+            "toggle",
+            "unknown"
+          ]
+        },
+        "outcome": {
+          "enum": [
+            "success",
+            "invalid",
+            "error"
+          ]
+        },
+        "settings": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "bionic",
+            "bionicApproach",
+            "bionicGradient",
+            "anchorTrigger",
+            "answerFirst",
+            "chunks",
+            "actionMarkers",
+            "length",
+            "driftGuard"
+          ],
+          "properties": {
+            "bionic": {
+              "type": "boolean"
+            },
+            "bionicApproach": {
+              "enum": [
+                "third",
+                "vowels",
+                "consonants",
+                "third+anchor"
+              ]
+            },
+            "bionicGradient": {
+              "enum": [
+                "off",
+                "color",
+                "weight",
+                "both"
+              ]
+            },
+            "anchorTrigger": {
+              "type": "integer",
+              "minimum": 2,
+              "maximum": 50
+            },
+            "answerFirst": {
+              "type": "boolean"
+            },
+            "chunks": {
+              "type": "boolean"
+            },
+            "actionMarkers": {
+              "type": "boolean"
+            },
+            "length": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "driftGuard": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100
+            }
+          }
+        },
+        "config_source": {
+          "enum": [
+            "commands",
+            "native"
+          ]
+        },
+        "normalization_version": {
+          "const": 1
+        },
+        "config_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "format_config_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "event_id",
+        "installation_id",
+        "event",
+        "day",
+        "plugin_version",
+        "integration",
+        "source",
+        "session_key",
+        "settings",
+        "config_source",
+        "normalization_version",
+        "config_id",
+        "format_config_id"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "event_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{32}$"
+        },
+        "installation_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{32}$"
+        },
+        "event": {
+          "const": "session_observed"
+        },
+        "day": {
+          "type": "string",
+          "format": "date",
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+        },
+        "plugin_version": {
+          "type": "string",
+          "maxLength": 64,
+          "pattern": "^(unknown|[0-9]+\\.[0-9]+\\.[0-9]+([-+.][\\w.-]+)?)$"
+        },
+        "integration": {
+          "enum": [
+            "claude",
+            "unknown"
+          ]
+        },
+        "source": {
+          "enum": [
+            "hook",
+            "pace",
+            "preview"
+          ]
+        },
+        "session_key": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "settings": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "bionic",
+            "bionicApproach",
+            "bionicGradient",
+            "anchorTrigger",
+            "answerFirst",
+            "chunks",
+            "actionMarkers",
+            "length",
+            "driftGuard"
+          ],
+          "properties": {
+            "bionic": {
+              "type": "boolean"
+            },
+            "bionicApproach": {
+              "enum": [
+                "third",
+                "vowels",
+                "consonants",
+                "third+anchor"
+              ]
+            },
+            "bionicGradient": {
+              "enum": [
+                "off",
+                "color",
+                "weight",
+                "both"
+              ]
+            },
+            "anchorTrigger": {
+              "type": "integer",
+              "minimum": 2,
+              "maximum": 50
+            },
+            "answerFirst": {
+              "type": "boolean"
+            },
+            "chunks": {
+              "type": "boolean"
+            },
+            "actionMarkers": {
+              "type": "boolean"
+            },
+            "length": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "driftGuard": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100
+            }
+          }
+        },
+        "config_source": {
+          "enum": [
+            "commands",
+            "native"
+          ]
+        },
+        "normalization_version": {
+          "const": 1
+        },
+        "config_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "format_config_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "event_id",
+        "installation_id",
+        "event",
+        "day",
+        "plugin_version",
+        "integration",
+        "source",
+        "session_key",
+        "enabled",
+        "settings",
+        "config_source",
+        "normalization_version",
+        "config_id",
+        "format_config_id",
+        "prompt_sequence"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "event_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{32}$"
+        },
+        "installation_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{32}$"
+        },
+        "event": {
+          "const": "prompt_observed"
+        },
+        "day": {
+          "type": "string",
+          "format": "date",
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+        },
+        "plugin_version": {
+          "type": "string",
+          "maxLength": 64,
+          "pattern": "^(unknown|[0-9]+\\.[0-9]+\\.[0-9]+([-+.][\\w.-]+)?)$"
+        },
+        "integration": {
+          "enum": [
+            "claude",
+            "unknown"
+          ]
+        },
+        "source": {
+          "enum": [
+            "hook",
+            "pace",
+            "preview"
+          ]
+        },
+        "session_key": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            }
+          ]
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "settings": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "bionic",
+            "bionicApproach",
+            "bionicGradient",
+            "anchorTrigger",
+            "answerFirst",
+            "chunks",
+            "actionMarkers",
+            "length",
+            "driftGuard"
+          ],
+          "properties": {
+            "bionic": {
+              "type": "boolean"
+            },
+            "bionicApproach": {
+              "enum": [
+                "third",
+                "vowels",
+                "consonants",
+                "third+anchor"
+              ]
+            },
+            "bionicGradient": {
+              "enum": [
+                "off",
+                "color",
+                "weight",
+                "both"
+              ]
+            },
+            "anchorTrigger": {
+              "type": "integer",
+              "minimum": 2,
+              "maximum": 50
+            },
+            "answerFirst": {
+              "type": "boolean"
+            },
+            "chunks": {
+              "type": "boolean"
+            },
+            "actionMarkers": {
+              "type": "boolean"
+            },
+            "length": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "driftGuard": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100
+            }
+          }
+        },
+        "config_source": {
+          "enum": [
+            "commands",
+            "native"
+          ]
+        },
+        "normalization_version": {
+          "const": 1
+        },
+        "config_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "format_config_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "prompt_sequence": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1,
+          "maximum": 9223372036854775807
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "session_key": {
+                "type": "null"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "prompt_sequence": {
+                "type": "null"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "prompt_sequence": {
+                "type": "integer"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "event_id",
+        "installation_id",
+        "event",
+        "day",
+        "plugin_version",
+        "integration",
+        "source",
+        "session_key",
+        "changed_fields",
+        "previous_settings",
+        "settings",
+        "config_source",
+        "normalization_version",
+        "config_id",
+        "format_config_id"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "event_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{32}$"
+        },
+        "installation_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{32}$"
+        },
+        "event": {
+          "const": "config_saved"
+        },
+        "day": {
+          "type": "string",
+          "format": "date",
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+        },
+        "plugin_version": {
+          "type": "string",
+          "maxLength": 64,
+          "pattern": "^(unknown|[0-9]+\\.[0-9]+\\.[0-9]+([-+.][\\w.-]+)?)$"
+        },
+        "integration": {
+          "enum": [
+            "claude",
+            "unknown"
+          ]
+        },
+        "source": {
+          "enum": [
+            "hook",
+            "pace",
+            "preview"
+          ]
+        },
+        "session_key": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            }
+          ]
+        },
+        "changed_fields": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "bionic",
+              "bionicApproach",
+              "bionicGradient",
+              "anchorTrigger",
+              "answerFirst",
+              "chunks",
+              "actionMarkers",
+              "length",
+              "driftGuard"
+            ]
+          },
+          "minItems": 1
+        },
+        "previous_settings": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "bionic",
+            "bionicApproach",
+            "bionicGradient",
+            "anchorTrigger",
+            "answerFirst",
+            "chunks",
+            "actionMarkers",
+            "length",
+            "driftGuard"
+          ],
+          "properties": {
+            "bionic": {
+              "type": "boolean"
+            },
+            "bionicApproach": {
+              "enum": [
+                "third",
+                "vowels",
+                "consonants",
+                "third+anchor"
+              ]
+            },
+            "bionicGradient": {
+              "enum": [
+                "off",
+                "color",
+                "weight",
+                "both"
+              ]
+            },
+            "anchorTrigger": {
+              "type": "integer",
+              "minimum": 2,
+              "maximum": 50
+            },
+            "answerFirst": {
+              "type": "boolean"
+            },
+            "chunks": {
+              "type": "boolean"
+            },
+            "actionMarkers": {
+              "type": "boolean"
+            },
+            "length": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "driftGuard": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100
+            }
+          }
+        },
+        "settings": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "bionic",
+            "bionicApproach",
+            "bionicGradient",
+            "anchorTrigger",
+            "answerFirst",
+            "chunks",
+            "actionMarkers",
+            "length",
+            "driftGuard"
+          ],
+          "properties": {
+            "bionic": {
+              "type": "boolean"
+            },
+            "bionicApproach": {
+              "enum": [
+                "third",
+                "vowels",
+                "consonants",
+                "third+anchor"
+              ]
+            },
+            "bionicGradient": {
+              "enum": [
+                "off",
+                "color",
+                "weight",
+                "both"
+              ]
+            },
+            "anchorTrigger": {
+              "type": "integer",
+              "minimum": 2,
+              "maximum": 50
+            },
+            "answerFirst": {
+              "type": "boolean"
+            },
+            "chunks": {
+              "type": "boolean"
+            },
+            "actionMarkers": {
+              "type": "boolean"
+            },
+            "length": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "driftGuard": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100
+            }
+          }
+        },
+        "config_source": {
+          "enum": [
+            "commands",
+            "native"
+          ]
+        },
+        "normalization_version": {
+          "const": 1
+        },
+        "config_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "format_config_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "event_id",
+        "installation_id",
+        "event",
+        "day",
+        "plugin_version",
+        "integration",
+        "source",
+        "session_key",
+        "changed_fields",
+        "previous_settings",
+        "settings",
+        "config_source",
+        "normalization_version",
+        "config_id",
+        "format_config_id"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "event_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{32}$"
+        },
+        "installation_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{32}$"
+        },
+        "event": {
+          "const": "config_observed_changed"
+        },
+        "day": {
+          "type": "string",
+          "format": "date",
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+        },
+        "plugin_version": {
+          "type": "string",
+          "maxLength": 64,
+          "pattern": "^(unknown|[0-9]+\\.[0-9]+\\.[0-9]+([-+.][\\w.-]+)?)$"
+        },
+        "integration": {
+          "enum": [
+            "claude",
+            "unknown"
+          ]
+        },
+        "source": {
+          "enum": [
+            "hook",
+            "pace",
+            "preview"
+          ]
+        },
+        "session_key": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            }
+          ]
+        },
+        "changed_fields": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "bionic",
+              "bionicApproach",
+              "bionicGradient",
+              "anchorTrigger",
+              "answerFirst",
+              "chunks",
+              "actionMarkers",
+              "length",
+              "driftGuard"
+            ]
+          },
+          "minItems": 1
+        },
+        "previous_settings": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "bionic",
+            "bionicApproach",
+            "bionicGradient",
+            "anchorTrigger",
+            "answerFirst",
+            "chunks",
+            "actionMarkers",
+            "length",
+            "driftGuard"
+          ],
+          "properties": {
+            "bionic": {
+              "type": "boolean"
+            },
+            "bionicApproach": {
+              "enum": [
+                "third",
+                "vowels",
+                "consonants",
+                "third+anchor"
+              ]
+            },
+            "bionicGradient": {
+              "enum": [
+                "off",
+                "color",
+                "weight",
+                "both"
+              ]
+            },
+            "anchorTrigger": {
+              "type": "integer",
+              "minimum": 2,
+              "maximum": 50
+            },
+            "answerFirst": {
+              "type": "boolean"
+            },
+            "chunks": {
+              "type": "boolean"
+            },
+            "actionMarkers": {
+              "type": "boolean"
+            },
+            "length": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "driftGuard": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100
+            }
+          }
+        },
+        "settings": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "bionic",
+            "bionicApproach",
+            "bionicGradient",
+            "anchorTrigger",
+            "answerFirst",
+            "chunks",
+            "actionMarkers",
+            "length",
+            "driftGuard"
+          ],
+          "properties": {
+            "bionic": {
+              "type": "boolean"
+            },
+            "bionicApproach": {
+              "enum": [
+                "third",
+                "vowels",
+                "consonants",
+                "third+anchor"
+              ]
+            },
+            "bionicGradient": {
+              "enum": [
+                "off",
+                "color",
+                "weight",
+                "both"
+              ]
+            },
+            "anchorTrigger": {
+              "type": "integer",
+              "minimum": 2,
+              "maximum": 50
+            },
+            "answerFirst": {
+              "type": "boolean"
+            },
+            "chunks": {
+              "type": "boolean"
+            },
+            "actionMarkers": {
+              "type": "boolean"
+            },
+            "length": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "driftGuard": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100
+            }
+          }
+        },
+        "config_source": {
+          "enum": [
+            "commands",
+            "native"
+          ]
+        },
+        "normalization_version": {
+          "const": 1
+        },
+        "config_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "format_config_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "event_id",
+        "installation_id",
+        "event",
+        "day",
+        "plugin_version",
+        "integration",
+        "source",
+        "session_key",
+        "score",
+        "settings",
+        "config_source",
+        "normalization_version",
+        "config_id",
+        "format_config_id"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "event_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{32}$"
+        },
+        "installation_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{32}$"
+        },
+        "event": {
+          "const": "rating_submitted"
+        },
+        "day": {
+          "type": "string",
+          "format": "date",
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+        },
+        "plugin_version": {
+          "type": "string",
+          "maxLength": 64,
+          "pattern": "^(unknown|[0-9]+\\.[0-9]+\\.[0-9]+([-+.][\\w.-]+)?)$"
+        },
+        "integration": {
+          "enum": [
+            "claude",
+            "unknown"
+          ]
+        },
+        "source": {
+          "enum": [
+            "hook",
+            "pace",
+            "preview"
+          ]
+        },
+        "session_key": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            }
+          ]
+        },
+        "score": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5
+        },
+        "settings": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "bionic",
+            "bionicApproach",
+            "bionicGradient",
+            "anchorTrigger",
+            "answerFirst",
+            "chunks",
+            "actionMarkers",
+            "length",
+            "driftGuard"
+          ],
+          "properties": {
+            "bionic": {
+              "type": "boolean"
+            },
+            "bionicApproach": {
+              "enum": [
+                "third",
+                "vowels",
+                "consonants",
+                "third+anchor"
+              ]
+            },
+            "bionicGradient": {
+              "enum": [
+                "off",
+                "color",
+                "weight",
+                "both"
+              ]
+            },
+            "anchorTrigger": {
+              "type": "integer",
+              "minimum": 2,
+              "maximum": 50
+            },
+            "answerFirst": {
+              "type": "boolean"
+            },
+            "chunks": {
+              "type": "boolean"
+            },
+            "actionMarkers": {
+              "type": "boolean"
+            },
+            "length": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "driftGuard": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100
+            }
+          }
+        },
+        "config_source": {
+          "enum": [
+            "commands",
+            "native"
+          ]
+        },
+        "normalization_version": {
+          "const": 1
+        },
+        "config_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "format_config_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "event_id",
+        "installation_id",
+        "event",
+        "day",
+        "plugin_version",
+        "integration",
+        "source",
+        "session_key",
+        "invalid_fields",
+        "category"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "event_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{32}$"
+        },
+        "installation_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{32}$"
+        },
+        "event": {
+          "const": "settings_error"
+        },
+        "day": {
+          "type": "string",
+          "format": "date",
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+        },
+        "plugin_version": {
+          "type": "string",
+          "maxLength": 64,
+          "pattern": "^(unknown|[0-9]+\\.[0-9]+\\.[0-9]+([-+.][\\w.-]+)?)$"
+        },
+        "integration": {
+          "enum": [
+            "claude",
+            "unknown"
+          ]
+        },
+        "source": {
+          "enum": [
+            "hook",
+            "pace",
+            "preview"
+          ]
+        },
+        "session_key": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            }
+          ]
+        },
+        "invalid_fields": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "bionic",
+              "bionicApproach",
+              "bionicGradient",
+              "anchorTrigger",
+              "answerFirst",
+              "chunks",
+              "actionMarkers",
+              "length",
+              "driftGuard"
+            ]
+          }
+        },
+        "category": {
+          "enum": [
+            "config_read_or_validation",
+            "invalid_settings",
+            "rating_failed",
+            "save_failed"
+          ]
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "event_id",
+        "installation_id",
+        "event",
+        "day",
+        "plugin_version",
+        "integration",
+        "source",
+        "session_key",
+        "invalid_fields",
+        "category",
+        "settings",
+        "config_source",
+        "normalization_version",
+        "config_id",
+        "format_config_id"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "event_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{32}$"
+        },
+        "installation_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{32}$"
+        },
+        "event": {
+          "const": "settings_error"
+        },
+        "day": {
+          "type": "string",
+          "format": "date",
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+        },
+        "plugin_version": {
+          "type": "string",
+          "maxLength": 64,
+          "pattern": "^(unknown|[0-9]+\\.[0-9]+\\.[0-9]+([-+.][\\w.-]+)?)$"
+        },
+        "integration": {
+          "enum": [
+            "claude",
+            "unknown"
+          ]
+        },
+        "source": {
+          "enum": [
+            "hook",
+            "pace",
+            "preview"
+          ]
+        },
+        "session_key": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            }
+          ]
+        },
+        "invalid_fields": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "bionic",
+              "bionicApproach",
+              "bionicGradient",
+              "anchorTrigger",
+              "answerFirst",
+              "chunks",
+              "actionMarkers",
+              "length",
+              "driftGuard"
+            ]
+          }
+        },
+        "category": {
+          "enum": [
+            "config_read_or_validation",
+            "invalid_settings",
+            "rating_failed",
+            "save_failed"
+          ]
+        },
+        "settings": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "bionic",
+            "bionicApproach",
+            "bionicGradient",
+            "anchorTrigger",
+            "answerFirst",
+            "chunks",
+            "actionMarkers",
+            "length",
+            "driftGuard"
+          ],
+          "properties": {
+            "bionic": {
+              "type": "boolean"
+            },
+            "bionicApproach": {
+              "enum": [
+                "third",
+                "vowels",
+                "consonants",
+                "third+anchor"
+              ]
+            },
+            "bionicGradient": {
+              "enum": [
+                "off",
+                "color",
+                "weight",
+                "both"
+              ]
+            },
+            "anchorTrigger": {
+              "type": "integer",
+              "minimum": 2,
+              "maximum": 50
+            },
+            "answerFirst": {
+              "type": "boolean"
+            },
+            "chunks": {
+              "type": "boolean"
+            },
+            "actionMarkers": {
+              "type": "boolean"
+            },
+            "length": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "driftGuard": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100
+            }
+          }
+        },
+        "config_source": {
+          "enum": [
+            "commands",
+            "native"
+          ]
+        },
+        "normalization_version": {
+          "const": 1
+        },
+        "config_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "format_config_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      }
+    }
+  ]
+}

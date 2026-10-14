@@ -31,8 +31,9 @@ USAGE = """Usage:
   /pace analytics on|off        enable or stop local recording (default: on)
   /pace analytics retention <days>  retain 1-365 days (default 90)
   /pace analytics export        print retained, validated events as JSONL
+  /pace analytics share [on|off|preview|upload|delete]  optional manual gathering
   /pace analytics clear         delete analytics history; preserve ratings and preferences
-Local usage recording is on by default; nothing is uploaded. Disable with /pace analytics off.
+Local usage recording is on by default; remote sharing is separately opt-in with manual uploads. Disable local recording with /pace analytics off.
 Notes cannot contain double quotes, backticks or $."""
 
 SWITCH_NAMES = {name.lower(): name for name in pace_config.SWITCHES}
@@ -223,6 +224,11 @@ def _window(rest: List[str]) -> Optional[int]:
 
 def _analytics_command(rest: List[str], now: datetime) -> str:
     store = analytics.default_store()
+    if rest and rest[0].lower() == 'share':
+        import pace_remote_store as remote
+        from pace_remote_commands import run_share
+        return run_share([x.lower() for x in rest[1:]], now=now, store=remote.RemoteStore(store.root),
+                         local_enabled=store.preferences()['enabled'], release=remote.RELEASE)
     if not rest:
         store.maintain(now=now)
         prefs = store.preferences()
@@ -233,12 +239,12 @@ def _analytics_command(rest: List[str], now: datetime) -> str:
                 f"Retained records: {d['first'] or 'none'} to {d['last'] or 'none'}\n"
                 f"Capped days: {', '.join(d['capped_days']) or 'none'}\n"
                 "Coverage: Claude hook prompts; instrumented local commands/settings. Codex/ChatGPT skill usage unavailable.\n"
-                "Recording is best effort and local only. Export with /pace analytics export.")
+                "Local recording is best effort. Sharing is separately controlled by /pace analytics share. Export with /pace analytics export.")
     command = rest[0].lower()
     if command in ("on", "off") and len(rest) == 1:
         store.configure(enabled=command == "on")
         store.maintain(now=now)
-        return f"Local analytics recording {command}. Existing records are retained; nothing is uploaded."
+        return f"Local analytics recording {command}. Existing records are retained. Check /pace analytics share for sharing status."
     if command == "retention" and len(rest) == 2 and _window(rest[1:]) is not None:
         days = _window(rest[1:])
         store.configure(retention_days=days)

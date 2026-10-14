@@ -134,7 +134,7 @@ def _header(summary, diagnostics):
     if diagnostics.get('retention_days', 365) < diagnostics.get('requested_days', 0):
         lines.append(f"Window limited by {diagnostics['retention_days']}-day retention.")
     if 'enabled' in diagnostics:
-        lines.append('Local recording: ' + ('on (on by default)' if diagnostics['enabled'] else 'off') + '; nothing is uploaded. Disable: /pace analytics off.')
+        lines.append('Local recording: ' + ('on (on by default)' if diagnostics['enabled'] else 'off') + '; sharing is separately controlled by /pace analytics share. Disable local recording: /pace analytics off.')
     for key in ('malformed', 'unsupported', 'duplicates'):
         if diagnostics.get(key):
             lines.append(f"Skipped {key} records: {diagnostics[key]}")

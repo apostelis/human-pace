@@ -1,6 +1,6 @@
 ---
-description: Show or change human-pace switches, rate settings, or inspect local analytics (recording on by default; nothing uploaded)
-argument-hint: "[<switch> on|off | bionic third|vowels|consonants|third+anchor | experimental gradient off|color|weight|both | anchor-trigger <n> | length <n> | drift-guard <n> | preset focus|light|off | on | off | reset | rate <1-5> [note] | report [usage|compare [days]] | analytics [on|off|retention <days>|export|clear]]"
+description: Show or change human-pace switches, rate settings, or inspect analytics and control optional manual sharing (local recording on; sharing off by default)
+argument-hint: "[<switch> on|off | bionic third|vowels|consonants|third+anchor | experimental gradient off|color|weight|both | anchor-trigger <n> | length <n> | drift-guard <n> | preset focus|light|off | on | off | reset | rate <1-5> [note] | report [usage|compare [days]] | analytics [on|off|retention <days>|export|clear|share [on|off|preview|upload|delete]]]"
 allowed-tools: Bash(python3:*)
 ---
 !`python3 "${CLAUDE_PLUGIN_ROOT}/scripts/pace.py" "$ARGUMENTS"`
